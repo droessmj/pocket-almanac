@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Michael Droessler
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+
 import Darwin
 import Foundation
 import Security

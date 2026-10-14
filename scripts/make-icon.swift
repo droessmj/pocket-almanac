@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Michael Droessler
+// SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
+
 // Renders the Sift app icon (1024×1024, opaque) into the asset catalog.
 // Run from the repo root: swift scripts/make-icon.swift
 import CoreGraphics
