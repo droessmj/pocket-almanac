@@ -6,8 +6,7 @@ import SwiftUI
 @main
 struct SiftApp: App {
     @State private var setupDone = (UserDefaults(suiteName: Sift.appGroup)?.bool(forKey: "setupDone")) ?? false
-
-    init() { ActivityLog.clearIfReinstalled() }
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some Scene {
         WindowGroup {
@@ -24,6 +23,12 @@ struct SiftApp: App {
                     }
                 }
             }
+            .onChange(of: scenePhase, initial: true) { _, phase in
+                if phase == .active {
+                    do { _ = try ActivityLog.load() }
+                    catch { ActivityLog.report(error) }
+                }
+            }
         }
     }
 }
@@ -38,10 +43,10 @@ struct SetupView: View {
             VStack(alignment: .leading, spacing: 10) {
                 LabeledContent("1", value: "In iPhone Settings, go to Apps → Messages → Text Message Filter and choose Sift.")
                 LabeledContent("2", value: "Add the keywords you want to block. Texts containing them go silently to Junk.")
-                LabeledContent("3", value: "Check the Activity tab. Anything Sift filtered shows there with its reason.")
+                LabeledContent("3", value: "Review recent activity and the reasons for matches in the Activity tab.")
             }
             .font(.subheadline)
-            Text("Works on SMS/MMS from numbers not in your Contacts. Everything happens on your iPhone; message text is never stored.")
+            Text("Works on SMS/MMS from numbers not in your Contacts. Activity saves sender, time, verdict, and matched keyword on this iPhone. Full message text is never stored.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -116,12 +121,18 @@ struct KeywordsView: View {
 struct ActivityView: View {
     @State private var entries: [ActivityEntry] = []
     @State private var confirmClear = false
+    @State private var errorMessage: String?
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         NavigationStack {
             List {
-                if entries.isEmpty {
+                if let errorMessage {
+                    Section {
+                        Label(errorMessage, systemImage: "exclamationmark.triangle")
+                        Button("Try again", action: reload)
+                    }
+                } else if entries.isEmpty {
                     Text("No messages processed yet.").foregroundStyle(.secondary)
                 }
                 ForEach(entries) { entry in
@@ -139,15 +150,15 @@ struct ActivityView: View {
                     }
                 }
                 Section {} footer: {
-                    Text("Kept on this iPhone only, for \(ActivityLog.retentionDays) days (max \(ActivityLog.maxEntries)). Message text is never stored.")
+                    Text("Shows up to \(ActivityLog.maxEntries) recent entries with a \(ActivityLog.retentionDays)-day history. Cleanup runs when Sift opens or processes a message. Activity saves sender, time, verdict, and matched keyword on this iPhone; full message text is never stored. Activity may be incomplete if storage is unavailable.")
                 }
             }
             .navigationTitle("Activity")
             .toolbar {
-                Button("Clear", role: .destructive) { confirmClear = true }.disabled(entries.isEmpty)
+                Button("Clear", role: .destructive) { confirmClear = true }.disabled(entries.isEmpty && errorMessage == nil)
             }
             .confirmationDialog("Delete all activity?", isPresented: $confirmClear) {
-                Button("Delete All", role: .destructive) { ActivityLog.clear(); reload() }
+                Button("Delete All", role: .destructive, action: clear)
             }
             .refreshable { reload() }
             .onAppear(perform: reload)
@@ -155,5 +166,25 @@ struct ActivityView: View {
         }
     }
 
-    private func reload() { entries = ActivityLog.load() }
+    private func reload() {
+        do {
+            entries = try ActivityLog.load()
+            errorMessage = nil
+        } catch {
+            ActivityLog.report(error)
+            errorMessage = "Couldn’t refresh activity. Filtering still works. Unlock your iPhone and try again."
+        }
+    }
+
+    private func clear() {
+        do {
+            try ActivityLog.clear()
+            entries = []
+            errorMessage = nil
+            reload()
+        } catch {
+            ActivityLog.report(error)
+            errorMessage = "Couldn’t delete activity. Unlock your iPhone and try again."
+        }
+    }
 }

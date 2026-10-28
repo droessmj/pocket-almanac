@@ -113,7 +113,18 @@ public struct HabitArchive: Codable, Equatable, Sendable {
         return entries.first { $0.habitID == habit.id && $0.day == day }
     }
 
-    /// Nil clears a check-in; zero remains a recorded progress value.
+    /// Resolve an unrecorded pass/fail day as passed without writing synthetic history.
+    public func effectiveEntry(for habit: Habit, on date: Date, calendar: Calendar = .current,
+                               now: Date = Date()) -> HabitEntry? {
+        let day = HabitDay(date, calendar: calendar)
+        guard day >= HabitDay(habit.createdAt, calendar: calendar),
+              day <= HabitDay(now, calendar: calendar) else { return nil }
+        if let recorded = entry(for: habit, on: date, calendar: calendar) { return recorded }
+        guard habit.kind == .checkIn else { return nil }
+        return HabitEntry(habit: habit, date: date, checkIn: .passed, calendar: calendar)
+    }
+
+    /// Only explicit check-ins are stored; zero remains a recorded progress value.
     public mutating func record(_ habit: Habit, on date: Date, value: Double? = nil,
                                 checkIn: CheckIn? = nil, calendar: Calendar = .current,
                                 now: Date = Date()) {
@@ -147,7 +158,8 @@ public struct HabitArchive: Codable, Equatable, Sendable {
     public func streak(for habit: Habit, through date: Date = Date(), calendar: Calendar = .current) -> Int {
         var cursor = calendar.startOfDay(for: date)
         // An unfinished current day doesn't end yesterday's streak.
-        if !isComplete(habit, on: cursor, calendar: calendar), calendar.isDateInToday(date) {
+        if !isComplete(habit, on: cursor, calendar: calendar), calendar.isDateInToday(date),
+           entry(for: habit, on: cursor, calendar: calendar)?.checkIn != .failed {
             cursor = calendar.date(byAdding: .day, value: -1, to: cursor)!
         }
         var count = 0
@@ -160,7 +172,7 @@ public struct HabitArchive: Codable, Equatable, Sendable {
     }
 
     public func isComplete(_ habit: Habit, on date: Date, calendar: Calendar = .current) -> Bool {
-        entry(for: habit, on: date, calendar: calendar)?.isComplete ?? false
+        effectiveEntry(for: habit, on: date, calendar: calendar)?.isComplete ?? false
     }
 
     public func samples(for habit: Habit, days: Int, through end: Date = Date(),
@@ -170,7 +182,8 @@ public struct HabitArchive: Codable, Equatable, Sendable {
         let created = calendar.startOfDay(for: habit.createdAt)
         return (0..<days).reversed().compactMap { offset in
             guard let date = calendar.date(byAdding: .day, value: -offset, to: end), date >= created else { return nil }
-            return HabitSample(date: date, entry: entry(for: habit, on: date, calendar: calendar))
+            return HabitSample(date: date, entry: effectiveEntry(for: habit, on: date, calendar: calendar),
+                               isDefault: entry(for: habit, on: date, calendar: calendar) == nil && habit.kind == .checkIn)
         }
     }
 
@@ -190,5 +203,6 @@ public struct HabitSample: Identifiable, Sendable {
     public var id: Date { date }
     public let date: Date
     public let entry: HabitEntry?
+    public var isDefault = false
     public var fraction: Double { entry?.fraction ?? 0 }
 }

@@ -27,6 +27,8 @@ targets:
       path: apps/Sift/App/Info.plist
       properties:
         CFBundleDisplayName: Sift
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         UILaunchScreen: {}
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait, UIInterfaceOrientationPortraitUpsideDown, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
         ITSAppUsesNonExemptEncryption: false
@@ -42,6 +44,7 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.droessmj.sift
+        TARGETED_DEVICE_FAMILY: "1"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
     dependencies:
       - target: SiftFilter
@@ -53,6 +56,8 @@ targets:
       path: apps/Sift/Filter/Info.plist
       properties:
         CFBundleDisplayName: Sift Filter
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         NSExtension:
           NSExtensionPointIdentifier: com.apple.identitylookup.message-filter
           NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).MessageFilterExtension
@@ -70,25 +75,41 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.droessmj.sift.filter
+        TARGETED_DEVICE_FAMILY: "1"
 
   Daymark:
     type: application
     platform: iOS
     deploymentTarget: "17.0"
-    sources: [apps/Daymark]
+    sources: [apps/Daymark/App, apps/Daymark/Assets.xcassets, apps/Daymark/PrivacyInfo.xcprivacy]
     info:
       path: apps/Daymark/Info.plist
       properties:
         CFBundleDisplayName: Daymark
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         UILaunchScreen: {}
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         ITSAppUsesNonExemptEncryption: false
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.droessmj.daymark
+        TARGETED_DEVICE_FAMILY: "1"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
     dependencies:
       - package: HabitKit
+  DaymarkUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources: [apps/Daymark/UITests]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.droessmj.daymark.uitests
+        TARGETED_DEVICE_FAMILY: "1"
+        GENERATE_INFOPLIST_FILE: YES
+    dependencies:
+      - target: Daymark
 schemes:
   Sift:
     build:
@@ -98,3 +119,6 @@ schemes:
     build:
       targets:
         Daymark: all
+    test:
+      targets:
+        - DaymarkUITests

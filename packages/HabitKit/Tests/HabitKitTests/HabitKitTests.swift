@@ -17,10 +17,11 @@ final class HabitKitTests: XCTestCase {
               unit: "steps", createdAt: date(1))
     }
 
-    func testPassFailAndMissingAreDistinct() {
+    func testPassFailDefaultsAndExplicitOverrides() {
         let habit = habit(kind: .checkIn)
         var archive = HabitArchive(habits: [habit])
         XCTAssertNil(archive.entry(for: habit, on: date(4), calendar: calendar))
+        XCTAssertTrue(archive.isComplete(habit, on: date(4), calendar: calendar))
         archive.record(habit, on: date(4), checkIn: .failed, calendar: calendar)
         XCTAssertEqual(archive.entry(for: habit, on: date(4), calendar: calendar)?.checkIn, .failed)
         XCTAssertFalse(archive.isComplete(habit, on: date(4), calendar: calendar))
@@ -28,6 +29,20 @@ final class HabitKitTests: XCTestCase {
         XCTAssertTrue(archive.isComplete(habit, on: date(4), calendar: calendar))
         XCTAssertEqual(archive.entries.count, 1)
         archive.clear(habit, on: date(4), calendar: calendar)
+        XCTAssertTrue(archive.entries.isEmpty)
+        XCTAssertTrue(archive.isComplete(habit, on: date(4), calendar: calendar))
+    }
+
+    func testDefaultsRespectCreationFutureAndNumericHabits() {
+        let checkIn = habit(kind: .checkIn)
+        let numeric = habit()
+        let archive = HabitArchive(habits: [checkIn, numeric])
+        XCTAssertNil(archive.effectiveEntry(for: checkIn, on: date(1, month: 2), calendar: calendar, now: date(6)))
+        XCTAssertNil(archive.effectiveEntry(for: checkIn, on: date(7), calendar: calendar, now: date(6)))
+        XCTAssertNil(archive.effectiveEntry(for: numeric, on: date(5), calendar: calendar, now: date(6)))
+        let samples = archive.samples(for: checkIn, days: 3, through: date(3), calendar: calendar)
+        XCTAssertEqual(samples.map(\.fraction), [1, 1, 1])
+        XCTAssertTrue(samples.allSatisfy(\.isDefault))
         XCTAssertTrue(archive.entries.isEmpty)
     }
 
@@ -88,14 +103,14 @@ final class HabitKitTests: XCTestCase {
         XCTAssertTrue(archive.samples(for: habit, days: 0, calendar: calendar).isEmpty)
     }
 
-    func testStreakStopsAtFailureAndMissingDay() {
+    func testStreakIncludesDefaultPassesAndStopsAtFailure() {
         let habit = habit(kind: .checkIn)
         var archive = HabitArchive(habits: [habit])
         archive.record(habit, on: date(5), checkIn: .failed, calendar: calendar)
         archive.record(habit, on: date(6), checkIn: .passed, calendar: calendar)
         archive.record(habit, on: date(7), checkIn: .passed, calendar: calendar)
         XCTAssertEqual(archive.streak(for: habit, through: date(7), calendar: calendar), 2)
-        XCTAssertEqual(archive.streak(for: habit, through: date(8), calendar: calendar), 0)
+        XCTAssertEqual(archive.streak(for: habit, through: date(8), calendar: calendar), 3)
     }
 
     func testUnfinishedTodayPreservesYesterdayStreak() {
@@ -104,9 +119,11 @@ final class HabitKitTests: XCTestCase {
         let habit = Habit(name: "Read", emoji: "📚", color: .rose, kind: .checkIn, createdAt: yesterday)
         var archive = HabitArchive(habits: [habit])
         archive.record(habit, on: yesterday, checkIn: .passed, calendar: calendar)
-        XCTAssertEqual(archive.streak(for: habit, through: now, calendar: calendar), 1)
+        XCTAssertEqual(archive.streak(for: habit, through: now, calendar: calendar), 2)
         archive.record(habit, on: now, checkIn: .passed, calendar: calendar)
         XCTAssertEqual(archive.streak(for: habit, through: now, calendar: calendar), 2)
+        archive.record(habit, on: now, checkIn: .failed, calendar: calendar)
+        XCTAssertEqual(archive.streak(for: habit, through: now, calendar: calendar), 0)
     }
 
     func testIndependentHabitsAndCalendarDays() {

@@ -42,7 +42,7 @@ struct HabitEditor: View {
                         Text(emoji).font(.system(size: 36)).frame(width: 68, height: 68)
                             .background(color.tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 20))
                         VStack(alignment: .leading, spacing: 5) {
-                            Text("One small promise").font(.headline)
+                            Text("One small promise").font(DaymarkTheme.handwriting(24, relativeTo: .headline))
                             Text("Build a routine that feels like you.").font(.caption).foregroundStyle(.secondary)
                         }
                     }.frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 8)
@@ -107,7 +107,7 @@ struct HabitEditor: View {
                 } header: { Text("How you’ll track it") }
                 footer: {
                     Text(kind == .checkIn
-                         ? "Mark each day as passed or failed. Days you haven’t logged stay unrecorded."
+                         ? "Each day starts as passed. Mark a failure whenever needed."
                          : "Tap + on a habit to add progress. You can also enter an exact daily total. Goal changes apply to days you haven’t logged yet.")
                     if original != nil {
                         Text("Tracking type stays the same to keep your history consistent.")
@@ -115,6 +115,8 @@ struct HabitEditor: View {
                 }
             }
             .scrollDismissesKeyboard(.interactively)
+            .scrollContentBackground(.hidden)
+            .background { PaperSurface().ignoresSafeArea() }
             .navigationTitle(original == nil ? "A new beginning" : "Edit habit")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

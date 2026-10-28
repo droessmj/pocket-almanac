@@ -10,8 +10,8 @@ struct TrendsView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Little steps add up.").font(.system(size: 29, weight: .bold, design: .rounded))
-                    Text("Your progress, one habit at a time.").font(.subheadline).foregroundStyle(DaymarkTheme.secondary)
+                    Text("Little steps add up.").font(DaymarkTheme.handwriting(31, relativeTo: .title))
+                    Text("Your progress, one habit at a time.").font(DaymarkTheme.handwriting(18, relativeTo: .subheadline)).foregroundStyle(DaymarkTheme.secondary)
                 }.padding(.top, 18)
                 periodPicker(days: $days)
 
@@ -26,9 +26,9 @@ struct TrendsView: View {
                             HStack(spacing: 12) {
                                 HabitIcon(habit: habit, size: 42)
                                 VStack(alignment: .leading, spacing: 4) {
-                                    Text(habit.name).font(.system(size: 16, weight: .semibold, design: .rounded))
+                                    Text(habit.name).font(DaymarkTheme.handwriting(21, relativeTo: .headline))
                                         .foregroundStyle(DaymarkTheme.ink)
-                                    Text("\(completed) of \(samples.count) days completed")
+                                    Text("\(completed) of \(samples.count) \(samples.count == 1 ? "day" : "days") completed")
                                         .font(.caption).foregroundStyle(DaymarkTheme.secondary)
                                 }
                                 Spacer()
@@ -40,13 +40,13 @@ struct TrendsView: View {
                                 Text("\(completionPercent(samples))% completion")
                                     .font(.caption.weight(.semibold)).foregroundStyle(habit.color.tint)
                                 Spacer()
-                                Text("🔥 \(store.archive.streak(for: habit)) day streak")
+                                Label("\(store.archive.streak(for: habit)) day streak", systemImage: "sparkle")
                                     .font(.caption).foregroundStyle(DaymarkTheme.secondary)
                             }
                         }.daymarkCard()
                     }.buttonStyle(.plain)
                 }
-                Text("Trends include today and start on each habit’s creation date. Unrecorded days count toward the completion rate.")
+                Text("Trends include today and start on each habit’s creation date. Pass/fail habits count as passed unless marked failed. Numeric habits need recorded progress.")
                     .font(.caption).foregroundStyle(DaymarkTheme.secondary).padding(.bottom, 8)
             }.padding(.horizontal, 22).padding(.bottom, 18)
         }
@@ -72,6 +72,11 @@ struct TrendChart: View {
     var compact = false
 
     private var hasEntries: Bool { samples.contains { $0.entry != nil } }
+    private var axisDates: [Date] {
+        if samples.count <= 4 { return samples.map(\.date) }
+        let last = samples.count - 1
+        return [0, last / 3, last * 2 / 3, last].map { samples[$0].date }
+    }
     private var domain: ClosedRange<Date> {
         let first = samples.first?.date ?? Calendar.current.startOfDay(for: Date())
         let last = samples.last?.date ?? first
@@ -88,7 +93,8 @@ struct TrendChart: View {
             ForEach(samples) { sample in
                 if let entry = sample.entry {
                     if entry.fraction > 0 {
-                        BarMark(x: .value("Day", sample.date, unit: .day), y: .value("Daily goal %", sample.fraction * 100))
+                        BarMark(x: .value("Day", sample.date, unit: .day), y: .value("Daily goal %", sample.fraction * 100),
+                                width: samples.count < 7 ? .fixed(compact ? 10 : 22) : .ratio(0.7))
                             .foregroundStyle(color.gradient).cornerRadius(compact ? 2 : 4)
                     } else {
                         PointMark(x: .value("Day", sample.date, unit: .day), y: .value("Daily goal %", 3))
@@ -103,7 +109,7 @@ struct TrendChart: View {
         .chartYScale(domain: 0...105)
         .chartXAxis {
             if !compact {
-                AxisMarks(values: .automatic(desiredCount: 4)) { _ in
+                AxisMarks(values: axisDates) { _ in
                     AxisValueLabel(format: .dateTime.month(.abbreviated).day()).font(.system(size: 9))
                 }
             }
@@ -127,6 +133,6 @@ struct TrendChart: View {
             }
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Daily progress chart. \(samples.filter { $0.entry != nil }.count) recorded days, \(completionPercent(samples)) percent completion.")
+        .accessibilityLabel("Daily progress chart. \(samples.filter { $0.entry != nil }.count) days shown, \(completionPercent(samples)) percent completion.")
     }
 }

@@ -10,7 +10,12 @@ final class HabitStore {
     private let file: ArchiveFile
 
     init() {
-        let directory = URL.applicationSupportDirectory.appendingPathComponent("Daymark", isDirectory: true)
+        var directory = URL.applicationSupportDirectory.appendingPathComponent("Daymark", isDirectory: true)
+        #if DEBUG
+        if let testID = ProcessInfo.processInfo.environment["DAYMARK_TEST_STORE"], UUID(uuidString: testID) != nil {
+            directory = URL.temporaryDirectory.appendingPathComponent("DaymarkTests-\(testID)", isDirectory: true)
+        }
+        #endif
         file = ArchiveFile(url: directory.appendingPathComponent("habits.json"))
         load()
     }
@@ -60,7 +65,7 @@ final class HabitStore {
         }
     }
 
-    func entry(_ habit: Habit, on date: Date) -> HabitEntry? { archive.entry(for: habit, on: date) }
+    func entry(_ habit: Habit, on date: Date) -> HabitEntry? { archive.effectiveEntry(for: habit, on: date) }
 
     @discardableResult
     func record(_ habit: Habit, on date: Date, value: Double? = nil, checkIn: CheckIn? = nil) -> Bool {
@@ -75,7 +80,7 @@ final class HabitStore {
     func quickLog(_ habit: Habit, on date: Date) {
         let existing = entry(habit, on: date)
         if habit.kind == .checkIn {
-            if existing?.checkIn == .passed { _ = clear(habit, on: date) }
+            if existing?.checkIn == .passed { _ = record(habit, on: date, checkIn: .failed) }
             else { _ = record(habit, on: date, checkIn: .passed) }
         } else {
             _ = record(habit, on: date, value: (existing?.value ?? 0) + habit.step)

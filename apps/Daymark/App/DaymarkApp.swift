@@ -20,7 +20,7 @@ private enum AppTab: String, CaseIterable {
 
     var icon: String {
         switch self {
-        case .today: "square.grid.2x2.fill"
+        case .today: "sun.horizon"
         case .trends: "chart.xyaxis.line"
         case .habits: "checklist"
         }
@@ -45,7 +45,7 @@ struct RootView: View {
                         }
                     }
                     .toolbar(.hidden, for: .navigationBar)
-                    .background(DaymarkTheme.background)
+                    .background { PaperSurface().ignoresSafeArea() }
                     .safeAreaInset(edge: .bottom, spacing: 0) { tabBar }
                     .navigationDestination(for: Habit.self) { habit in HabitDetailView(habitID: habit.id) }
                 }
@@ -70,14 +70,6 @@ struct RootView: View {
 
     private var tabBar: some View {
         HStack(spacing: 4) {
-            Button { addingHabit = true } label: {
-                Image(systemName: "plus").font(.system(size: 21, weight: .semibold))
-                    .foregroundStyle(.white).frame(width: 46, height: 46)
-                    .background(DaymarkTheme.accent.gradient, in: Circle())
-            }
-            .accessibilityLabel("Add habit")
-            .padding(.horizontal, 10)
-
             ForEach(AppTab.allCases, id: \.self) { item in
                 Button { tab = item } label: {
                     VStack(spacing: 5) {
@@ -87,17 +79,26 @@ struct RootView: View {
                     .foregroundStyle(tab == item ? DaymarkTheme.accent : DaymarkTheme.secondary)
                     .frame(maxWidth: .infinity).frame(minHeight: 54)
                     .background(tab == item ? DaymarkTheme.accent.opacity(0.08) : .clear,
-                                in: RoundedRectangle(cornerRadius: 20))
+                                in: RoundedRectangle(cornerRadius: 8))
                 }
                 .accessibilityAddTraits(tab == item ? .isSelected : [])
+                .accessibilityIdentifier("tab-\(item.rawValue.lowercased())")
             }
+            Button { addingHabit = true } label: {
+                Image(systemName: "plus").font(.system(size: 21, weight: .semibold))
+                    .foregroundStyle(.white).frame(width: 46, height: 46)
+                    .background(DaymarkTheme.accent, in: RoundedRectangle(cornerRadius: 8))
+            }
+            .accessibilityLabel("Add habit")
+            .accessibilityIdentifier("add-habit")
+            .padding(.leading, 12)
+
+
         }
-        .padding(8)
-        .background(.regularMaterial, in: Capsule())
-        .overlay(Capsule().stroke(.white, lineWidth: 1.5))
-        .shadow(color: .black.opacity(0.04), radius: 14, y: 4)
-        .padding(.horizontal, 22).padding(.top, 10).padding(.bottom, 6)
-        .background(DaymarkTheme.background.opacity(0.96))
+        .padding(.horizontal, 20).padding(.vertical, 10)
+        .background { PaperSurface().ignoresSafeArea() }
+        .overlay(alignment: .top) {
+            Rectangle().fill(DaymarkTheme.ink.opacity(0.1)).frame(height: 1)
+        }
     }
 }
-

@@ -67,7 +67,7 @@ struct HabitDetailView: View {
     private func content(_ habit: Habit) -> some View {
         let samples = store.archive.samples(for: habit, days: days)
         let completed = samples.filter { $0.entry?.isComplete == true }.count
-        let logged = samples.filter { $0.entry != nil }.count
+        let logged = samples.filter { $0.entry != nil && !$0.isDefault }.count
         let failed = samples.filter { $0.entry?.checkIn == .failed }.count
 
         return ScrollView {
@@ -75,7 +75,7 @@ struct HabitDetailView: View {
                 HStack(spacing: 16) {
                     HabitIcon(habit: habit, size: 68)
                     VStack(alignment: .leading, spacing: 6) {
-                        Text(habit.name).font(.system(size: 25, weight: .bold, design: .rounded))
+                        Text(habit.name).font(DaymarkTheme.handwriting(27, relativeTo: .title2))
                         Text(habit.kind == .checkIn ? "One promise, every day" : "Daily goal · \(amount(habit.target)) \(habit.unit)")
                             .font(.subheadline).foregroundStyle(DaymarkTheme.secondary)
                         if habit.isArchived {
@@ -92,7 +92,7 @@ struct HabitDetailView: View {
                         Image(systemName: "arrow.right").font(.caption.bold())
                     }
                     .foregroundStyle(.white).padding(18)
-                    .background(habit.color.tint.gradient, in: RoundedRectangle(cornerRadius: 18))
+                    .background(DaymarkTheme.accent, in: RoundedRectangle(cornerRadius: 8))
                 }
 
                 periodPicker(days: $days)
@@ -105,9 +105,9 @@ struct HabitDetailView: View {
 
                 VStack(alignment: .leading, spacing: 20) {
                     HStack {
-                        Text("Your daily rhythm").font(.headline)
+                        Text("Your daily rhythm").font(DaymarkTheme.handwriting(23, relativeTo: .headline))
                         Spacer()
-                        Text("\(completed) wins").font(.caption.weight(.medium)).foregroundStyle(habit.color.tint)
+                        Text("\(completed) \(completed == 1 ? "win" : "wins")").font(.caption.weight(.medium)).foregroundStyle(habit.color.tint)
                     }
                     TrendChart(samples: samples, color: habit.color.tint).frame(height: 185)
                     HStack(spacing: 5) {
@@ -115,20 +115,22 @@ struct HabitDetailView: View {
                         Text(habit.kind == .progress ? "% of that day’s goal" : "Pass = 100%  ·  × = fail")
                             .font(.system(size: 10)).foregroundStyle(DaymarkTheme.secondary)
                         Spacer()
-                        Text("Gaps = unrecorded").font(.system(size: 10)).foregroundStyle(DaymarkTheme.secondary)
+                        Text(habit.kind == .checkIn ? "Passed unless marked failed" : "Gaps = unrecorded").font(.system(size: 10)).foregroundStyle(DaymarkTheme.secondary)
                     }
                 }.daymarkCard()
 
                 VStack(alignment: .leading, spacing: 14) {
-                    Text("Showing up matters").font(.headline)
-                    Text("\(completed) completed · \(failed) failed · \(samples.count - logged) unrecorded")
+                    Text("Showing up matters").font(DaymarkTheme.handwriting(23, relativeTo: .headline))
+                    Text(habit.kind == .checkIn
+                         ? "\(completed) passed · \(failed) failed · \(samples.filter(\.isDefault).count) passed by default"
+                         : "\(completed) completed · \(failed) failed · \(samples.count - logged) unrecorded")
                         .font(.caption).foregroundStyle(DaymarkTheme.secondary)
-                    Text("Based on \(samples.count) days since \(max(habit.createdAt, samples.first?.date ?? habit.createdAt).formatted(date: .abbreviated, time: .omitted)). Today is included and can still be in progress.")
+                    Text("Based on \(samples.count) \(samples.count == 1 ? "day" : "days") since \(max(habit.createdAt, samples.first?.date ?? habit.createdAt).formatted(date: .abbreviated, time: .omitted)). Today is included and can still be in progress.")
                         .font(.caption).foregroundStyle(DaymarkTheme.secondary)
                 }.daymarkCard()
 
                 HStack {
-                    Text("Daily history").font(.title3.bold())
+                    Text("Daily history").font(DaymarkTheme.handwriting(25, relativeTo: .title3))
                     Spacer()
                     Button("Choose date") { historyDate = Date(); showHistory = true }.font(.caption.weight(.medium))
                 }
@@ -151,7 +153,7 @@ struct HabitDetailView: View {
                         if sample.date != samples.reversed().prefix(14).last?.date { Divider().opacity(0.4) }
                     }
                 }
-                .padding(.horizontal, 16).background(.white, in: RoundedRectangle(cornerRadius: 22))
+                .padding(.horizontal, 16).paperCard()
                 Text("Tap a day to update it. Choose any earlier date to review older check-ins.")
                     .font(.caption).foregroundStyle(DaymarkTheme.secondary)
             }
@@ -161,11 +163,11 @@ struct HabitDetailView: View {
 
     private func metric(_ value: String, label: String, color: Color) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(value).font(.system(size: 25, weight: .bold, design: .rounded)).foregroundStyle(color)
+            Text(value).font(.system(.title2, design: .rounded).monospacedDigit()).foregroundStyle(color)
             Text(label).font(.system(size: 10, weight: .medium)).foregroundStyle(DaymarkTheme.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading).padding(14)
-        .background(.white, in: RoundedRectangle(cornerRadius: 18))
+        .paperCard()
     }
 
     private func historyLabel(_ sample: HabitSample) -> String {

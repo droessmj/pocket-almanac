@@ -23,7 +23,7 @@ struct LogEntryView: View {
                     HStack(spacing: 14) {
                         HabitIcon(habit: habit, size: 52)
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(habit.name).font(.headline)
+                            Text(habit.name).font(DaymarkTheme.handwriting(24, relativeTo: .headline))
                             Text(date.formatted(date: .complete, time: .omitted))
                                 .font(.caption).foregroundStyle(.secondary)
                         }
@@ -31,10 +31,11 @@ struct LogEntryView: View {
                 }
 
                 if habit.kind == .checkIn {
-                    Section("How did it go?") {
+                    Section {
                         checkInButton(.passed, title: "Passed", subtitle: "I kept my promise", icon: "checkmark.circle.fill", color: habit.color.tint)
                         checkInButton(.failed, title: "Failed", subtitle: "A fresh start tomorrow", icon: "xmark.circle.fill", color: DaymarkTheme.secondary)
-                    }
+                    } header: { Text("How did it go?") }
+                    footer: { Text("Pass/fail habits count as passed unless you mark a failure.") }
                 } else {
                     Section {
                         HStack {
@@ -56,14 +57,16 @@ struct LogEntryView: View {
                     footer: { Text("Daily goal: \(amount(goal)) \(unit). Enter your total for this day, or use a quick-add button.") }
                 }
 
-                if existing != nil {
+                if store.archive.entry(for: habit, on: date) != nil {
                     Section {
                         Button("Clear this day", role: .destructive) {
                             if store.clear(habit, on: date) { dismiss() }
                         }
-                    } footer: { Text("Clearing a day returns it to unrecorded.") }
+                    } footer: { Text(habit.kind == .checkIn ? "Clearing a day restores its default passed result." : "Clearing a day returns it to unrecorded.") }
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background { PaperSurface().ignoresSafeArea() }
             .navigationTitle("Daily check-in").navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
@@ -74,7 +77,7 @@ struct LogEntryView: View {
                 checkIn = existing?.checkIn
             }
         }
-        .presentationDetents([.medium, .large])
+        .presentationDetents(habit.kind == .checkIn ? [.large] : [.medium, .large])
     }
 
     private func checkInButton(_ option: CheckIn, title: String, subtitle: String, icon: String, color: Color) -> some View {
@@ -82,7 +85,7 @@ struct LogEntryView: View {
             HStack(spacing: 14) {
                 Image(systemName: icon).font(.title2).foregroundStyle(color)
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(title).font(.headline).foregroundStyle(DaymarkTheme.ink)
+                    Text(title).font(DaymarkTheme.handwriting(23, relativeTo: .headline)).foregroundStyle(DaymarkTheme.ink)
                     Text(subtitle).font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer()
@@ -91,6 +94,7 @@ struct LogEntryView: View {
             .padding(.vertical, 6).contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier("checkin-\(option.rawValue)")
         .accessibilityAddTraits(checkIn == option ? .isSelected : [])
     }
 

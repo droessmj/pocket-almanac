@@ -4,8 +4,13 @@
 import IdentityLookup
 
 /// Sends SMS/MMS from unknown senders that contain a user keyword to Junk (no notification);
-/// everything else is left to the system. Every message is recorded in the activity log.
-final class MessageFilterExtension: ILMessageFilterExtension {}
+/// everything else is left to the system. Activity metadata is saved on a best-effort basis.
+final class MessageFilterExtension: ILMessageFilterExtension {
+    override init() {
+        super.init()
+        ActivityLog.removeLegacyFile()
+    }
+}
 
 extension MessageFilterExtension: ILMessageFilterQueryHandling {
     func handle(
@@ -19,13 +24,13 @@ extension MessageFilterExtension: ILMessageFilterQueryHandling {
 
         let response = ILMessageFilterQueryResponse()
         response.action = match == nil ? .none : .junk
-        completion(response)
-
+        // Finish storage work before completion: iOS may suspend the extension after its response.
         ActivityLog.record(ActivityEntry(
             received: received,
             sender: queryRequest.sender ?? "unknown",
             verdict: match == nil ? .allowed : .spam,
             reason: match.map { "keyword \"\($0)\"" } ?? "no keyword match"
         ))
+        completion(response)
     }
 }
