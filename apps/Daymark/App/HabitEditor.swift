@@ -1,0 +1,144 @@
+import SwiftUI
+import HabitKit
+
+struct HabitEditor: View {
+    @Environment(HabitStore.self) private var store
+    @Environment(\.dismiss) private var dismiss
+    private let original: Habit?
+    @State private var name: String
+    @State private var emoji: String
+    @State private var color: HabitColor
+    @State private var kind: HabitKind
+    @State private var target: String
+    @State private var step: String
+    @State private var unit: String
+
+    private let emojis = ["🚶", "🔥", "💡", "🍞", "📖", "💧", "🧘", "🏃", "🌱", "💤", "🎨", "💪"]
+
+    init(habit: Habit? = nil) {
+        original = habit
+        _name = State(initialValue: habit?.name ?? "")
+        _emoji = State(initialValue: habit?.emoji ?? "🌱")
+        _color = State(initialValue: habit?.color ?? .lavender)
+        _kind = State(initialValue: habit?.kind ?? .checkIn)
+        _target = State(initialValue: (habit?.target ?? 30).formatted(.number.grouping(.never)))
+        _step = State(initialValue: (habit?.step ?? 5).formatted(.number.grouping(.never)))
+        _unit = State(initialValue: habit?.unit ?? "min")
+    }
+
+    private var targetValue: Double? { parseAmount(target) }
+    private var stepValue: Double? { parseAmount(step) }
+    private var valid: Bool {
+        !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !emoji.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        (kind == .checkIn || ((targetValue ?? 0) > 0 && (stepValue ?? 0) > 0 && !unit.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty))
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    HStack(spacing: 16) {
+                        Text(emoji).font(.system(size: 36)).frame(width: 68, height: 68)
+                            .background(color.tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 20))
+                        VStack(alignment: .leading, spacing: 5) {
+                            Text("One small promise").font(.headline)
+                            Text("Build a routine that feels like you.").font(.caption).foregroundStyle(.secondary)
+                        }
+                    }.frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 8)
+                    TextField("Habit name", text: $name).accessibilityLabel("Habit name")
+                }
+
+                Section("Make it yours") {
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible()), count: 6), spacing: 12) {
+                        ForEach(emojis, id: \.self) { symbol in
+                            Button { emoji = symbol } label: {
+                                Text(symbol).font(.title2).frame(maxWidth: .infinity).frame(height: 42)
+                                    .background(emoji == symbol ? color.tint.opacity(0.16) : .clear, in: RoundedRectangle(cornerRadius: 12))
+                            }.buttonStyle(.plain).accessibilityLabel("Choose \(symbol)")
+                                .accessibilityAddTraits(emoji == symbol ? .isSelected : [])
+                        }
+                    }.padding(.vertical, 8)
+                    HStack {
+                        Text("Custom emoji")
+                        Spacer()
+                        TextField("🌱", text: $emoji).multilineTextAlignment(.trailing).frame(width: 70)
+                            .onChange(of: emoji) { _, value in emoji = String(value.prefix(1)) }
+                            .accessibilityLabel("Custom emoji")
+                    }
+                    HStack {
+                        ForEach(HabitColor.allCases, id: \.self) { option in
+                            Button { color = option } label: {
+                                Circle().fill(option.tint).frame(width: 30, height: 30)
+                                    .overlay {
+                                        if color == option {
+                                            Image(systemName: "checkmark").font(.caption.bold()).foregroundStyle(.white)
+                                        }
+                                    }.frame(maxWidth: .infinity).frame(height: 44)
+                            }.buttonStyle(.plain).accessibilityLabel(option.label)
+                                .accessibilityAddTraits(color == option ? .isSelected : [])
+                        }
+                    }
+                }
+
+                Section {
+                    Picker("Tracking", selection: $kind) {
+                        Text("Pass / fail").tag(HabitKind.checkIn)
+                        Text("Build progress").tag(HabitKind.progress)
+                    }
+                    .pickerStyle(.segmented).disabled(original != nil)
+                    if kind == .progress {
+                        HStack {
+                            Text("Daily goal")
+                            TextField("30", text: $target).keyboardType(.decimalPad).multilineTextAlignment(.trailing)
+                                .accessibilityLabel("Daily goal")
+                        }
+                        HStack {
+                            Text("Unit")
+                            TextField("min, steps, pages…", text: $unit).multilineTextAlignment(.trailing)
+                                .accessibilityLabel("Progress unit")
+                        }
+                        HStack {
+                            Text("Quick-add amount")
+                            TextField("5", text: $step).keyboardType(.decimalPad).multilineTextAlignment(.trailing)
+                                .accessibilityLabel("Quick-add amount")
+                        }
+                    }
+                } header: { Text("How you’ll track it") }
+                footer: {
+                    Text(kind == .checkIn
+                         ? "Mark each day as passed or failed. Days you haven’t logged stay unrecorded."
+                         : "Tap + on a habit to add progress. You can also enter an exact daily total. Goal changes apply to days you haven’t logged yet.")
+                    if original != nil {
+                        Text("Tracking type stays the same to keep your history consistent.")
+                    }
+                }
+            }
+            .scrollDismissesKeyboard(.interactively)
+            .navigationTitle(original == nil ? "A new beginning" : "Edit habit")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(original == nil ? "Create" : "Save", action: save).bold().disabled(!valid)
+                }
+            }
+        }
+    }
+
+    private func save() {
+        guard valid else { return }
+        let habit = Habit(id: original?.id ?? UUID(), name: name.trimmingCharacters(in: .whitespacesAndNewlines),
+                          emoji: emoji, color: color, kind: kind, target: targetValue ?? 1,
+                          step: stepValue ?? 1, unit: unit.trimmingCharacters(in: .whitespacesAndNewlines),
+                          createdAt: original?.createdAt ?? Date(), isArchived: original?.isArchived ?? false)
+        if store.save(habit) { dismiss() }
+    }
+}
+
+func parseAmount(_ text: String) -> Double? {
+    let normalized = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        .replacingOccurrences(of: Locale.current.decimalSeparator ?? ".", with: ".")
+    guard let value = Double(normalized), value.isFinite else { return nil }
+    return value
+}

@@ -12,22 +12,30 @@ settings:
     SWIFT_VERSION: "5.0"
     CODE_SIGN_STYLE: Automatic
     TARGETED_DEVICE_FAMILY: "1"
-    MARKETING_VERSION: "0.1"
+    MARKETING_VERSION: "1.0.0"
     CURRENT_PROJECT_VERSION: "1"
+    ITSAppUsesNonExemptEncryption: NO
+packages:
+  HabitKit:
+    path: packages/HabitKit
 targets:
   Sift:
     type: application
     platform: iOS
-    sources: [App, Shared]
+    sources: [apps/Sift/App, apps/Sift/Shared]
     info:
-      path: App/Info.plist
+      path: apps/Sift/App/Info.plist
       properties:
         CFBundleDisplayName: Sift
         UILaunchScreen: {}
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait, UIInterfaceOrientationPortraitUpsideDown, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+        ITSAppUsesNonExemptEncryption: false
         SiftKeychainAccessGroup: $(AppIdentifierPrefix)com.droessmj.sift.shared
+        NSPrivacyAccessedAPITypeDescriptorBundleIdentifier: com.droessmj.sift
+    privacyManifest:
+      path: apps/Sift/Shared/PrivacyInfo.xcprivacy
     entitlements:
-      path: App/Sift.entitlements
+      path: apps/Sift/App/Sift.entitlements
       properties:
         com.apple.security.application-groups: [group.com.droessmj.sift]
         keychain-access-groups: [$(AppIdentifierPrefix)com.droessmj.sift.shared]
@@ -40,20 +48,53 @@ targets:
   SiftFilter:
     type: app-extension
     platform: iOS
-    sources: [Filter, Shared]
+    sources: [apps/Sift/Filter, apps/Sift/Shared]
     info:
-      path: Filter/Info.plist
+      path: apps/Sift/Filter/Info.plist
       properties:
         CFBundleDisplayName: Sift Filter
         NSExtension:
           NSExtensionPointIdentifier: com.apple.identitylookup.message-filter
           NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).MessageFilterExtension
         SiftKeychainAccessGroup: $(AppIdentifierPrefix)com.droessmj.sift.shared
+        # Filter extensions are signed with a team-prefixed bundle ID, so no resolvable key exists
+        # for the privacy manifest; the manifest itself still ships.
+        NSPrivacyAccessedAPITypeDescriptorBundleIdentifier: []
+    privacyManifest:
+      path: apps/Sift/Shared/PrivacyInfo.xcprivacy
     entitlements:
-      path: Filter/SiftFilter.entitlements
+      path: apps/Sift/Filter/SiftFilter.entitlements
       properties:
         com.apple.security.application-groups: [group.com.droessmj.sift]
         keychain-access-groups: [$(AppIdentifierPrefix)com.droessmj.sift.shared]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.droessmj.sift.filter
+
+  Daymark:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources: [apps/Daymark]
+    info:
+      path: apps/Daymark/Info.plist
+      properties:
+        CFBundleDisplayName: Daymark
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        ITSAppUsesNonExemptEncryption: false
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.droessmj.daymark
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+    dependencies:
+      - package: HabitKit
+schemes:
+  Sift:
+    build:
+      targets:
+        Sift: all
+  Daymark:
+    build:
+      targets:
+        Daymark: all

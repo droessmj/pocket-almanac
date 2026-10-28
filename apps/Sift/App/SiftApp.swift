@@ -5,15 +5,51 @@ import SwiftUI
 
 @main
 struct SiftApp: App {
+    @State private var setupDone = (UserDefaults(suiteName: Sift.appGroup)?.bool(forKey: "setupDone")) ?? false
+
     init() { ActivityLog.clearIfReinstalled() }
 
     var body: some Scene {
         WindowGroup {
-            TabView {
-                Tab("Keywords", systemImage: "text.badge.xmark") { KeywordsView() }
-                Tab("Activity", systemImage: "list.bullet.rectangle") { ActivityView() }
+            Group {
+                if setupDone {
+                    TabView {
+                        Tab("Keywords", systemImage: "text.badge.xmark") { KeywordsView() }
+                        Tab("Activity", systemImage: "list.bullet.rectangle") { ActivityView() }
+                    }
+                } else {
+                    SetupView {
+                        setupDone = true
+                        UserDefaults(suiteName: Sift.appGroup)?.set(true, forKey: "setupDone")
+                    }
+                }
             }
         }
+    }
+}
+
+struct SetupView: View {
+    let onDone: () -> Void
+
+    var body: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "funnel.fill").font(.system(size: 64)).foregroundStyle(.indigo)
+            Text("Set up Sift").font(.title.bold())
+            VStack(alignment: .leading, spacing: 10) {
+                LabeledContent("1", value: "In iPhone Settings, go to Apps → Messages → Text Message Filter and choose Sift.")
+                LabeledContent("2", value: "Add the keywords you want to block. Texts containing them go silently to Junk.")
+                LabeledContent("3", value: "Check the Activity tab. Anything Sift filtered shows there with its reason.")
+            }
+            .font(.subheadline)
+            Text("Works on SMS/MMS from numbers not in your Contacts. Everything happens on your iPhone; message text is never stored.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+            Button("Get started", action: onDone)
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
+        }
+        .padding(24)
     }
 }
 
@@ -103,12 +139,7 @@ struct ActivityView: View {
                     }
                 }
                 Section {} footer: {
-                    VStack(alignment: .leading) {
-                        Text("Kept on this iPhone only, for \(ActivityLog.retentionDays) days (max \(ActivityLog.maxEntries)). Message text is never stored.")
-                        if let limit = entries.first?.filterMemoryLimitMB {
-                            Text(String(format: "Filter memory limit: %.0f MB", limit))
-                        }
-                    }
+                    Text("Kept on this iPhone only, for \(ActivityLog.retentionDays) days (max \(ActivityLog.maxEntries)). Message text is never stored.")
                 }
             }
             .navigationTitle("Activity")

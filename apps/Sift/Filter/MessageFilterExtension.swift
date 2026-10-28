@@ -25,8 +25,7 @@ extension MessageFilterExtension: ILMessageFilterQueryHandling {
             received: received,
             sender: queryRequest.sender ?? "unknown",
             verdict: match == nil ? .allowed : .spam,
-            reason: match.map { "keyword \"\($0)\"" } ?? "no keyword match",
-            filterMemoryLimitMB: Memory.limitMB()
+            reason: match.map { "keyword \"\($0)\"" } ?? "no keyword match"
         ))
     }
 }

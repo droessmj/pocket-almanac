@@ -9,7 +9,7 @@ import ImageIO
 import UniformTypeIdentifiers
 
 let size = 1024
-let out = URL(fileURLWithPath: "App/Assets.xcassets/AppIcon.appiconset/icon-1024.png")
+let out = URL(fileURLWithPath: "apps/Sift/App/Assets.xcassets/AppIcon.appiconset/icon-1024.png")
 
 func rgb(_ hex: UInt32) -> CGColor {
     CGColor(srgbRed: CGFloat((hex >> 16) & 0xFF) / 255, green: CGFloat((hex >> 8) & 0xFF) / 255,

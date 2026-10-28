@@ -12,6 +12,12 @@ Requires Xcode 26+, [XcodeGen](https://github.com/yonaskolb/XcodeGen), and an iP
 3. Open `Sift.xcodeproj`, select your iPhone, and run.
 4. On the iPhone: Settings → Apps → Messages → Text Message Filter → Sift.
 
+## Release
+
+1. Set the paid Apple Developer team ID in `Config/Team.xcconfig`.
+2. `xcodegen generate`
+3. In Xcode: Product → Archive → Distribute App → App Store Connect.
+
 ## License
 
 Copyright (c) 2026 Michael Droessler.
