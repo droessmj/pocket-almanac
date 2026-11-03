@@ -4,7 +4,11 @@ Release Day in Ink (Daymark target) and Blotter (Sift target) as separate iPhone
 
 Check a task only when its result has been verified. Local build checks do not establish paid membership, provisioning, or App Review approval.
 
-Next input needed: confirm paid Apple Developer membership and App Store Connect access. The GitHub Pages website is prepared locally in website/dist/ using app-support@droessmj.com; publication is deferred at the user’s request. Day in Ink export/import, editable tracking types, and configurable pass/fail defaults need fresh device validation. Blotter's Activity tab and logging have been removed; build 3 is installed on the iPhone, while Day in Ink remains on build 2. The app retains deletion-only cleanup of old history; the filter has no Keychain calls or explicit shared Keychain entitlement. Selected listing names are Day in Ink: Habit Tracker and Blotter: Message Filter; exact-name availability remains pending. Both apps will be free to download in all available App Store countries and regions; those account settings remain to be applied. Distribution signing, public links, store records/assets, and TestFlight uploads remain open. The concrete store-preparation work is explained in `docs/release/RELEASE_PREPARATION.md`.
+Apple Developer registration was reported complete by the user on November 3, 2026. Active program enrollment, App Store Connect access, and distribution-signing setup remain to be verified; registration alone is not recorded as proof of those account capabilities.
+
+Latest account status reported by the user: **Enrollment Pending**. Active membership and distribution/TestFlight capability are not yet confirmed.
+
+Next input needed: confirm paid Apple Developer membership and App Store Connect access. The GitHub Pages site is now live at https://apps.droessmj.com/ with app-support@droessmj.com and GitHub Issues support. Verified HTTPS access and website output in the second security review; HTTP-to-HTTPS enforcement remains open. Day in Ink export/import, editable tracking types, and configurable pass/fail defaults need fresh device validation. Blotter's Activity tab and logging have been removed; build 3 is installed on the iPhone, while Day in Ink remains on build 2. The app retains deletion-only cleanup of old history; the filter has no Keychain calls or explicit shared Keychain entitlement. Selected listing names are Day in Ink: Habit Tracker and Blotter: Message Filter; exact-name availability remains pending. Both apps will be free to download in all available App Store countries and regions; those account settings remain to be applied. Distribution signing, public links, store records/assets, and TestFlight uploads remain open. The concrete store-preparation work is explained in `docs/release/RELEASE_PREPARATION.md`.
 
 ## 1. Developer account and signing
 
@@ -12,7 +16,9 @@ Next input needed: confirm paid Apple Developer membership and App Store Connect
 - [x] Confirm Xcode and XcodeGen are installed (Xcode 27.1; XcodeGen available).
 - [x] Confirm a team ID is configured in `Config/Team.xcconfig` (`VGRQY536X3`).
 - [x] Build and development-sign the latest Sift and Daymark, and install both on the paired physical iPhone (refreshed 2026-11-02; signing profiles expire November 9 around 14:41 Central). Distribution signing and paid membership remain separate checks.
+- [x] Register with Apple as a developer (user reported complete November 3, 2026).
 - [ ] Confirm the configured team has active paid Apple Developer Program membership.
+- [ ] Wait for the reported Enrollment Pending status to clear; verify activation before distribution signing or TestFlight upload.
 - [ ] Confirm Xcode can create distribution signing assets. Development signing and physical-device installation succeeded; the earlier sandboxed identity check does not indicate a current development-signing failure.
 - [ ] Confirm bundle IDs are registered: `com.droessmj.daymark`, `com.droessmj.sift`, and `com.droessmj.sift.filter`.
 - [x] Verify the build 3 app and filter retain App Group `group.com.droessmj.sift` for keyword preferences; the filter has no explicit shared Keychain entitlement. The app retains the old access group solely for deletion-only migration.
@@ -25,12 +31,18 @@ Next input needed: confirm paid Apple Developer membership and App Store Connect
 - [x] Verify all five website pages in Chrome at 1440, 390, and 320 pixels with a simulated GitHub Pages project prefix: links, styles, contact, no horizontal overflow, FAQ interaction, and keyboard skip link passed. Log: `build/app-support-browser-checks.log` (November 3, 2026).
 - [x] Complete the local public-release security review of current source, all four commits, private artifact exclusions, dependencies, and remote metadata; record findings in `docs/security/PUBLIC_RELEASE_REVIEW.md`.
 - [x] Prepare a manual-only GitHub Pages workflow that uploads only `website/dist/`, pins official action SHAs, and limits permissions; do not treat it as a deployed site.
-- [ ] Resolve or explicitly accept existing identity/commit-email and Expected Calls schedule disclosures before making the repository public. The repo remains private.
+- [x] Rewrite all five commits’ author/committer emails to `droessmj+iphone@gmail.com`, verify unchanged trees/messages/names/dates and preserved dirty files, push with an explicit force-with-lease, and set the same repo-local email for future commits (November 3, 2026).
+- [x] Remove Expected Calls from current source, including its app/package/tests/docs, Xcode targets/dependency/scheme, and README schedule/setup text; regenerate the project (November 3, 2026).
+- [ ] Resolve or explicitly accept remaining full-name/source identity and historical schedule disclosures. Expected Calls is removed locally; previously published commits/copies remain. The original five branch commits were rewritten, but old commit metadata is still anonymously retrievable by hash and the newer web-created CNAME commit uses a different email. See `docs/security/SECOND_SECURITY_PRIVACY_REVIEW.md`.
+- [x] Complete a second security/privacy review: five local commits plus the remote CNAME delta, 159 historical blobs, 97 initial working files, current public repo/site, anonymous old-commit access, 56 passing unit tests, and 16 isolated adversarial probes.
+- [x] Verify all five selected support/privacy/home pages over normal HTTPS and nine served files against local SHA-256 hashes at `https://apps.droessmj.com/` (November 3, 2026). The latest observed website-only workflow completed successfully.
+- [ ] Enable/verify Enforce HTTPS: the reviewed HTTP endpoint returned 200 rather than upgrading, and the default GitHub URL redirected to the HTTP custom-domain URL.
 - [ ] Verify public GitHub issue access, support mailbox delivery, and permanent HTTPS URLs after publishing the website.
 - [x] Prepare privacy/support drafts in `docs/release/PRIVACY_AND_SUPPORT.md`.
 - [x] Document the concrete support/privacy, pricing, screenshot, and listing work plus required user choices in `docs/release/RELEASE_PREPARATION.md`.
+- [x] Set `https://apps.droessmj.com/` as the shared Marketing URL and record each app's Support and Privacy Policy URLs in the listing fields, descriptions, and release guidance. App Store Connect entry and public HTTPS verification remain pending; listing URLs are not bundle/privacy manifest fields.
 - [ ] Review the draft privacy and support content in `docs/release/`.
-- [ ] Publish the approved privacy policies and support content; verify every URL works publicly without login.
+- [x] Observe published support/privacy content at the selected custom domain and verify all five pages publicly without login. Email delivery and HTTPS enforcement remain separate checks.
 - [ ] Add accessible privacy-policy and support links inside both apps.
 - [ ] Inspect each release archive's privacy report and bundled manifests.
 - [ ] Complete App Store Connect privacy answers against the final build and all SDKs. On-device-only processing may qualify for "Data Not Collected"; do not equate local storage with off-device collection.

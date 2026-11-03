@@ -6,7 +6,6 @@ Personal iPhone apps, built primarily for my own use and shared in case others f
 | --- | --- | --- |
 | [Blotter](apps/Sift) | On-device SMS keyword filter | 26 |
 | [Day in Ink](apps/Daymark) | Daily pass/fail and progress habits, with per-habit trends | 17 |
-| [Expected Calls](apps/ExpectedCalls) | Multiple expected-call windows with user-owned Shortcuts automations | 17 |
 
 App Store titles are **Blotter: Message Filter** and **Day in Ink: Habit Tracker**. Xcode schemes and source paths remain Sift and Daymark; existing bundle IDs and data storage identifiers are retained for updates.
 
@@ -35,8 +34,6 @@ For Blotter (Sift scheme), enable Settings → Apps → Messages → Text Messag
 
 For Day in Ink (Daymark scheme), six starter habits are included with no fabricated history. Customize them or create your own. Tap a habit’s + button to add progress, or its check-in button to change its pass/fail result. Open a habit to log a failure, adjust a daily total, edit history, or view 7-, 30-, and 90-day trends. Touch and hold a daily card for more actions.
 
-For Expected Calls, the November 4, 2026 3:55–4:15 p.m. Central window is prefilled. Add further windows as needed. Each requires two Shortcuts boundary triggers; the app does not change Phone settings or install automations. Closing restores the declared default **Silence unknown callers**, not an arbitrary previous preference. See its [setup guide](apps/ExpectedCalls/README.md) before relying on it.
-
 ## Checks
 
 ```sh
@@ -58,7 +55,7 @@ Track preparation, validation, and launch in [RELEASE_CHECKLIST.md](RELEASE_CHEC
 
 The GitHub Pages support website is in [website/](website/README.md). Open [the built home page](website/dist/index.html) for a local preview. It includes separate support and privacy pages for Day in Ink and Blotter, links to this repository’s Issues tab, and offers `app-support@droessmj.com` for private questions. The prepared Pages workflow deploys only when manually run. Publication is a separate step.
 
-Read the [public release security review](docs/security/PUBLIC_RELEASE_REVIEW.md) before changing repository visibility. Current source/history still includes identity and personal schedule disclosures. See [SECURITY.md](SECURITY.md) for private vulnerability reporting.
+Read the [latest security/privacy review](docs/security/SECOND_SECURITY_PRIVACY_REVIEW.md) for publication findings. Current source still includes copyright identity; previous commits retain removed content. See [SECURITY.md](SECURITY.md) for private vulnerability reporting.
 
 1. Set the paid Apple Developer team ID in `Config/Team.xcconfig`.
 2. `xcodegen generate`
@@ -66,7 +63,7 @@ Read the [public release security review](docs/security/PUBLIC_RELEASE_REVIEW.md
 
 ## Support development
 
-If these apps are useful to you, you can [support development on Patreon](https://www.patreon.com/c/droessmj).
+If these apps are useful to you, you can [leave a one-time tip on Ko-fi](https://ko-fi.com/droessmj). No subscription required.
 Contributions are optional and do not unlock app features, grant commercial-use rights, or guarantee features, release dates, or support response times.
 
 ## License
