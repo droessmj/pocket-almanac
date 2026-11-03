@@ -1,6 +1,6 @@
 # Pocket Almanac website
 
-**Live status verified November 3, 2026:** `https://apps.droessmj.com/` serves all five pages over valid HTTPS, and the nine public files match the generated output by SHA-256. The repository is now public; the latest observed website-only workflow succeeded. HTTP still served content without redirecting at the review snapshot, so Enforce HTTPS remains to be verified. See [the second security/privacy review](../docs/security/SECOND_SECURITY_PRIVACY_REVIEW.md). Earlier statements below about preparation describe the original local-only work, not the current deployment state.
+**Live status verified November 3, 2026:** `https://apps.droessmj.com/` serves all five pages over valid HTTPS, and the nine public files match the generated output by SHA-256. The repository is now public; the latest observed website-only workflow succeeded. HTTP still served content without redirecting at the review snapshot, so Enforce HTTPS remains to be verified. See [the release checklist](../RELEASE_CHECKLIST.md). Earlier statements below about preparation describe the original local-only work, not the current deployment state.
 
 A static website for **Day in Ink: Habit Tracker** and **Blotter: Message Filter**. The branding describes personal tools shared with others, with no promised response time or roadmap. Includes a shared home page and separate support/privacy pages for each app. It is prepared locally and has not been published.
 
@@ -31,7 +31,7 @@ Open `http://127.0.0.1:8000/`. Stop the server with Control-C. You can also open
 
 The existing repository has been renamed by its owner to `droessmj/pocket-almanac`; the local origin URL and site links now use that name. No commit, push, visibility change, Pages setting, or deployment has been performed by this work. Renaming the local `sift` folder is optional and does not affect the site or the app bundle IDs.
 
-1. Read [the security review](../docs/security/PUBLIC_RELEASE_REVIEW.md) and resolve or explicitly accept the identity/history and personal schedule disclosures before making the repository public. Review policies against the shipping builds and run the readiness check above.
+1. Review [the release checklist](../RELEASE_CHECKLIST.md) and privately kept security notes and resolve or explicitly accept the identity/history and personal schedule disclosures before making the repository public. Review policies against the shipping builds and run the readiness check above.
 2. Review the exact files to be committed, commit the intended source/site changes, and push when ready. Keep ignored build outputs, provisioning profiles, diagnostics, and personal app data out of Git. Do not force-add ignored files or upload the whole workspace through the GitHub website.
 3. Make the repository public only after completing the review. Confirm its Issues tab is reachable by other users and the support email receives mail.
 4. In **Settings → Pages → Build and deployment**, choose **GitHub Actions**. In the `github-pages` environment, restrict deployment branches to `main`; add a required reviewer if desired.
@@ -93,7 +93,7 @@ Use these exact App Store Connect URLs after verifying the domain and public HTT
 | Day in Ink | `https://apps.droessmj.com/day-in-ink/support.html` | `https://apps.droessmj.com/day-in-ink/privacy.html` |
 | Blotter | `https://apps.droessmj.com/blotter/support.html` | `https://apps.droessmj.com/blotter/privacy.html` |
 
-Use `https://apps.droessmj.com/` as the Marketing URL for both apps. These URLs are recorded in the [listing fields and descriptions](../docs/release/STORE_LISTINGS.md); entering them in App Store Connect and adding accessible links inside the apps remain separate release tasks. No App Store download links have been added to the site.
+Use `https://apps.droessmj.com/` as the Marketing URL for both apps. Use the listing URL table above; entering these URLs in App Store Connect and adding accessible links inside the apps remain separate release tasks. No App Store download links have been added to the site.
 
 Apple requires working [support and privacy links](https://developer.apple.com/app-store/review/), including an easily accessible privacy-policy link [within each app](https://developer.apple.com/app-store/review/guidelines/#privacy). These pages provide the relevant content; approval still depends on the final app and submission.
 

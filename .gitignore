@@ -28,3 +28,6 @@ xcuserdata/
 **/activity.jsonl
 **/habits.json
 Config/Local.xcconfig
+
+# Private release notes, research, and review material.
+/docs/

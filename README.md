@@ -51,11 +51,11 @@ To add another app, put its files in `apps/<Name>`, add an application target an
 
 ## Release
 
-Track preparation, validation, and launch in [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md). Privacy/support content and store listing drafts are in [docs/release](docs/release).
+Track preparation, validation, and launch in [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md). Public support and privacy content is maintained in [website/src](website/src/). Root docs/ material is kept outside version control.
 
 The GitHub Pages support website is in [website/](website/README.md). Open [the built home page](website/dist/index.html) for a local preview. It includes separate support and privacy pages for Day in Ink and Blotter, links to this repository’s Issues tab, and offers `app-support@droessmj.com` for private questions. The prepared Pages workflow deploys only when manually run. Publication is a separate step.
 
-Read the [latest security/privacy review](docs/security/SECOND_SECURITY_PRIVACY_REVIEW.md) for publication findings. Current source still includes copyright identity; previous commits retain removed content. See [SECURITY.md](SECURITY.md) for private vulnerability reporting.
+Review the release checklist for outstanding publication checks. See [SECURITY.md](SECURITY.md) for private vulnerability reporting.
 
 1. Set the paid Apple Developer team ID in `Config/Team.xcconfig`.
 2. `xcodegen generate`
