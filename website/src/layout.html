@@ -3,13 +3,20 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src https://www.googletagmanager.com 'sha256-b1nGdmWmS7vNzHiBVJB7kr57A4VpyL8eJM4vsPjS+jA='; style-src 'self'; img-src 'self' https://www.googletagmanager.com https://*.google-analytics.com; connect-src https://www.googletagmanager.com https://*.google-analytics.com https://*.google.com; base-uri 'none'; form-action 'none'; object-src 'none'">
   <meta name="referrer" content="no-referrer">
   <meta name="description" content="{{description}}">
   <meta name="theme-color" content="{{theme_color}}">
   <title>{{title}}</title>
   <link rel="icon" href="{{root}}{{favicon}}" type="{{icon_type}}">
   <link rel="stylesheet" href="{{root}}assets/styles.css">
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-4WHKJVZCYY"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('js', new Date());
+    gtag('config', 'G-4WHKJVZCYY');
+  </script>
 </head>
 <body class="theme-{{theme}}">
   <a class="skip-link" href="#main">Skip to content</a>

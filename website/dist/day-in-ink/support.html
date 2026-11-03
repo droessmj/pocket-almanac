@@ -3,13 +3,20 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src https://www.googletagmanager.com 'sha256-b1nGdmWmS7vNzHiBVJB7kr57A4VpyL8eJM4vsPjS+jA='; style-src 'self'; img-src 'self' https://www.googletagmanager.com https://*.google-analytics.com; connect-src https://www.googletagmanager.com https://*.google-analytics.com https://*.google.com; base-uri 'none'; form-action 'none'; object-src 'none'">
   <meta name="referrer" content="no-referrer">
   <meta name="description" content="Get help with Day in Ink habits, pass/fail defaults, tracking types, backups, and restoring your progress.">
   <meta name="theme-color" content="#f4f0e7">
   <title>Day in Ink — Help &amp; Support</title>
   <link rel="icon" href="../assets/day-in-ink-icon.png" type="image/png">
   <link rel="stylesheet" href="../assets/styles.css">
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-4WHKJVZCYY"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('js', new Date());
+    gtag('config', 'G-4WHKJVZCYY');
+  </script>
 </head>
 <body class="theme-day-in-ink">
   <a class="skip-link" href="#main">Skip to content</a>
