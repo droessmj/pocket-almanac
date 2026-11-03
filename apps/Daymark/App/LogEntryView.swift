@@ -10,10 +10,11 @@ struct LogEntryView: View {
     @State private var checkIn: CheckIn?
 
     private var existing: HabitEntry? { store.entry(habit, on: date) }
+    private var kind: HabitKind { existing?.kind ?? habit.kind }
     private var goal: Double { existing?.target ?? habit.target }
     private var unit: String { existing?.unit ?? habit.unit }
     private var valid: Bool {
-        habit.kind == .checkIn ? checkIn != nil : (parseAmount(value).map { $0 >= 0 } ?? false)
+        kind == .checkIn ? checkIn != nil : (parseAmount(value).map { $0 >= 0 } ?? false)
     }
 
     var body: some View {
@@ -30,12 +31,15 @@ struct LogEntryView: View {
                     }.padding(.vertical, 6)
                 }
 
-                if habit.kind == .checkIn {
+                if kind == .checkIn {
                     Section {
                         checkInButton(.passed, title: "Passed", subtitle: "I kept my promise", icon: "checkmark.circle.fill", color: habit.color.tint)
                         checkInButton(.failed, title: "Failed", subtitle: "A fresh start tomorrow", icon: "xmark.circle.fill", color: DaymarkTheme.secondary)
                     } header: { Text("How did it go?") }
-                    footer: { Text("Pass/fail habits count as passed unless you mark a failure.") }
+                    footer: {
+                        Text(habit.defaultPassed ? "Unrecorded pass/fail days count as passed."
+                                                 : "Unrecorded pass/fail days count as failed. Mark a pass when you complete it.")
+                    }
                 } else {
                     Section {
                         HStack {
@@ -62,7 +66,11 @@ struct LogEntryView: View {
                         Button("Clear this day", role: .destructive) {
                             if store.clear(habit, on: date) { dismiss() }
                         }
-                    } footer: { Text(habit.kind == .checkIn ? "Clearing a day restores its default passed result." : "Clearing a day returns it to unrecorded.") }
+                    } footer: {
+                        Text(habit.kind == .checkIn
+                             ? "Clearing a day restores its default \(habit.defaultPassed ? "passed" : "failed") result."
+                             : "Clearing a day returns it to unrecorded.")
+                    }
                 }
             }
             .scrollContentBackground(.hidden)
@@ -77,7 +85,7 @@ struct LogEntryView: View {
                 checkIn = existing?.checkIn
             }
         }
-        .presentationDetents(habit.kind == .checkIn ? [.large] : [.medium, .large])
+        .presentationDetents(kind == .checkIn ? [.large] : [.medium, .large])
     }
 
     private func checkInButton(_ option: CheckIn, title: String, subtitle: String, icon: String, color: Color) -> some View {
@@ -100,7 +108,7 @@ struct LogEntryView: View {
 
     private func save() {
         guard valid else { return }
-        if store.record(habit, on: date, value: habit.kind == .progress ? parseAmount(value) : nil, checkIn: checkIn) {
+        if store.record(habit, on: date, value: kind == .progress ? parseAmount(value) : nil, checkIn: checkIn) {
             dismiss()
         }
     }

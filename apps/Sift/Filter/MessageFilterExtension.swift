@@ -2,13 +2,19 @@
 // SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
 
 import IdentityLookup
+import OSLog
 
 /// Sends SMS/MMS from unknown senders that contain a user keyword to Junk (no notification);
-/// everything else is left to the system. Activity metadata is saved on a best-effort basis.
+/// everything else is left to the system. No match or message history is recorded.
 final class MessageFilterExtension: ILMessageFilterExtension {
     override init() {
         super.init()
-        ActivityLog.removeLegacyFile()
+        // Deletion-only upgrade cleanup in the extension's own private container.
+        do { try LegacyLogFileCleanup.removePrivateLog() }
+        catch {
+            Logger(subsystem: "com.droessmj.sift", category: "LegacyCleanup")
+                .error("Old private activity file cleanup failed; it will retry on the next extension launch.")
+        }
     }
 }
 
@@ -18,19 +24,11 @@ extension MessageFilterExtension: ILMessageFilterQueryHandling {
         context: ILMessageFilterExtensionContext,
         completion: @escaping (ILMessageFilterQueryResponse) -> Void
     ) {
-        let received = Date()
         let match = KeywordMatcher.firstMatch(in: queryRequest.messageBody ?? "", keywords: KeywordStore.load(),
                                               options: KeywordStore.loadOptions())
 
         let response = ILMessageFilterQueryResponse()
         response.action = match == nil ? .none : .junk
-        // Finish storage work before completion: iOS may suspend the extension after its response.
-        ActivityLog.record(ActivityEntry(
-            received: received,
-            sender: queryRequest.sender ?? "unknown",
-            verdict: match == nil ? .allowed : .spam,
-            reason: match.map { "keyword \"\($0)\"" } ?? "no keyword match"
-        ))
         completion(response)
     }
 }

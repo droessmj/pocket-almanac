@@ -22,6 +22,14 @@ final class HabitStore {
 
     var activeHabits: [Habit] { archive.habits.filter { !$0.isArchived } }
 
+    /// Called only after the user confirms replacement of all data. Publish in memory after saving.
+    func restore(_ imported: HabitArchive) throws {
+        try file.save(imported)
+        archive = imported
+        ready = true
+        errorMessage = nil
+    }
+
     func load() {
         do {
             if let saved = try file.load() {
@@ -79,7 +87,7 @@ final class HabitStore {
 
     func quickLog(_ habit: Habit, on date: Date) {
         let existing = entry(habit, on: date)
-        if habit.kind == .checkIn {
+        if (existing?.kind ?? habit.kind) == .checkIn {
             if existing?.checkIn == .passed { _ = record(habit, on: date, checkIn: .failed) }
             else { _ = record(habit, on: date, checkIn: .passed) }
         } else {

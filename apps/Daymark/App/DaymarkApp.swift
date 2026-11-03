@@ -31,6 +31,7 @@ struct RootView: View {
     @Environment(HabitStore.self) private var store
     @State private var tab = AppTab.today
     @State private var addingHabit = false
+    @State private var showDataTransfer = false
 
     var body: some View {
         @Bindable var store = store
@@ -56,11 +57,18 @@ struct RootView: View {
                     Text("Your saved data has been kept. Try opening it again.")
                 } actions: {
                     Button("Try again") { store.load() }.buttonStyle(.borderedProminent)
+                    Button("Import a backup") { showDataTransfer = true }
                 }
             }
         }
         .foregroundStyle(DaymarkTheme.ink)
         .sheet(isPresented: $addingHabit) { HabitEditor() }
+        .sheet(isPresented: $showDataTransfer) {
+            NavigationStack {
+                DataTransferView()
+                    .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { showDataTransfer = false } } }
+            }
+        }
         .alert("Couldn’t save or load", isPresented: Binding(
             get: { store.errorMessage != nil },
             set: { if !$0 { store.errorMessage = nil } }

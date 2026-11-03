@@ -1,0 +1,16 @@
+<div class="page-heading policy-heading">
+  <a class="back-link" href="support.html">← Blotter support</a>
+  <p class="eyebrow">Blotter / Privacy policy</p>
+  <h1>Your rules.<br>On your iPhone.</h1>
+  <p class="intro">How Blotter handles your information.</p>
+  <p class="app-meta">Last updated <time datetime="{{policy_date}}">{{policy_date_label}}</time> · Developer: {{developer}}</p>
+</div>
+<article class="prose policy">
+  <section><h2>At a glance</h2><p>Blotter: Message Filter is an iPhone app developed by {{developer}}. It filters eligible texts from unknown senders using keywords you choose. It requires no account and uses no advertising, tracking, or third-party analytics SDKs.</p></section>
+  <section><h2>On-device message processing</h2><p>When you enable Blotter in iPhone Settings, iOS supplies eligible incoming SMS/MMS messages to its filter extension. The filter compares the message text with your saved keywords and matching options on your iPhone, then returns a classification to iOS.</p><p>Message text is not sent to the developer or a developer-operated server. The filter does not use the sender field. Blotter does not save message bodies, senders, message timestamps, filter decisions, or a history of keyword matches.</p></section>
+  <section><h2>Information stored on your iPhone</h2><p>Blotter stores your configured keywords, matching options, and setup status in shared app preferences so the app and its filter can use your rules. These preferences may be included in device backups according to your Apple settings.</p><p>The developer does not receive your rules or message data from the app. They are not sold or shared with advertising or analytics services.</p></section>
+  <section><h2>Retention, deletion, and disabling the filter</h2><p>Keyword rules stay in app storage until you remove them. You can stop future filtering by deselecting Blotter in the text message filtering settings under iPhone Settings → Apps → Messages.</p><p>Using Delete App removes local app storage; offloading preserves app data. Device backups are managed separately through Apple’s controls. Blotter does not control messages retained in Apple’s Messages app.</p><p>Activity logging has been removed. When the updated app is opened, it deletes older stored activity and keyword history without reading their contents, while keeping your rules and matching options. The updated filter also attempts to delete its old private log when it runs. Cleanup failures are retried; the app reports failures it encounters. Generic cleanup diagnostics contain no sender, keyword, or message body. Previously exported copies and old backups must be managed separately.</p></section>
+  {{support_privacy}}
+  {{website_privacy}}
+  <section><h2>Changes and contact</h2><p>This page will be updated if the app’s data practices change. The date above identifies the latest revision.</p><p>For privacy questions or requests about information you have sent to support, contact {{developer}}:</p>{{contact_blotter}}<p><a href="support.html">Blotter help &amp; support →</a></p></section>
+</article>

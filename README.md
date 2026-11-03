@@ -1,11 +1,14 @@
-# iPhone apps
+# Pocket Almanac
 
-A native SwiftUI monorepo with independently installable apps:
+Personal iPhone apps, built primarily for my own use and shared in case others find them useful. A native SwiftUI monorepo with independently installable apps:
 
 | App | Purpose | Minimum iOS |
 | --- | --- | --- |
-| [Sift](apps/Sift) | On-device SMS keyword filter, with recent activity history | 26 |
-| [Daymark](apps/Daymark) | Daily pass/fail and progress habits, with per-habit trends | 17 |
+| [Blotter](apps/Sift) | On-device SMS keyword filter | 26 |
+| [Day in Ink](apps/Daymark) | Daily pass/fail and progress habits, with per-habit trends | 17 |
+| [Expected Calls](apps/ExpectedCalls) | Multiple expected-call windows with user-owned Shortcuts automations | 17 |
+
+App Store titles are **Blotter: Message Filter** and **Day in Ink: Habit Tracker**. Xcode schemes and source paths remain Sift and Daymark; existing bundle IDs and data storage identifiers are retained for updates.
 
 ```text
 apps/
@@ -14,7 +17,7 @@ apps/
 packages/
   HabitKit/        # Tracking models, persistence, calendar logic, and unit tests
 Config/            # Shared signing configuration
-scripts/           # Icon generation and Sift diagnostics
+scripts/           # App icon generation
 project.yml        # XcodeGen source of truth for all targets and schemes
 ```
 
@@ -28,15 +31,17 @@ Requires Xcode 26+ and [XcodeGen](https://github.com/yonaskolb/XcodeGen).
 2. `xcodegen generate`
 3. Open `Sift.xcodeproj`, choose the **Sift** or **Daymark** scheme, select your iPhone or simulator, and run.
 
-For Sift, enable Settings → Apps → Messages → Text Message Filter → Sift on your iPhone. Texts from unknown senders that contain a keyword go silently to Junk. Its activity log stores sender, time, verdict, and a reason that can include the matched keyword; it never stores full message text. Cleanup runs on writes, app activation, and log reads, keeping up to 1,000 entries within a 30-day history. No plaintext fallback copies are created. See [Sift's README](apps/Sift/README.md) for storage behavior and device checks.
+For Blotter (Sift scheme), enable Settings → Apps → Messages → Text Message Filter → Blotter on your iPhone. Eligible texts from unknown senders that contain a keyword go silently to Junk. Only keyword rules, matching options, and setup status are saved; there is no Activity tab or match history. Upgrade cleanup deletes previously stored logs. See [Blotter's README](apps/Sift/README.md) for migration and device checks.
 
-For Daymark, six starter habits are included with no fabricated history. Customize them or create your own. Tap a habit’s + button to add progress, or its check-in button to mark a pass. Open a habit to log a failure, adjust a daily total, edit history, or view 7-, 30-, and 90-day trends. Touch and hold a daily card for more actions.
+For Day in Ink (Daymark scheme), six starter habits are included with no fabricated history. Customize them or create your own. Tap a habit’s + button to add progress, or its check-in button to change its pass/fail result. Open a habit to log a failure, adjust a daily total, edit history, or view 7-, 30-, and 90-day trends. Touch and hold a daily card for more actions.
+
+For Expected Calls, the November 4, 2026 3:55–4:15 p.m. Central window is prefilled. Add further windows as needed. Each requires two Shortcuts boundary triggers; the app does not change Phone settings or install automations. Closing restores the declared default **Silence unknown callers**, not an arbitrary previous preference. See its [setup guide](apps/ExpectedCalls/README.md) before relying on it.
 
 ## Checks
 
 ```sh
 make test-core             # Calendar, progress, check-in, streak, and storage tests
-make test-sift             # Logging retention, cleanup, failures, and concurrency tests
+make test-sift             # Keyword matching and deletion-only upgrade cleanup tests
 make build APP=Daymark    # Simulator build
 make build APP=Sift       # Includes the SMS filter extension
 make test-ui              # Daymark’s end-to-end simulator tests
@@ -51,9 +56,18 @@ To add another app, put its files in `apps/<Name>`, add an application target an
 
 Track preparation, validation, and launch in [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md). Privacy/support content and store listing drafts are in [docs/release](docs/release).
 
+The GitHub Pages support website is in [website/](website/README.md). Open [the built home page](website/dist/index.html) for a local preview. It includes separate support and privacy pages for Day in Ink and Blotter, links to this repository’s Issues tab, and offers `app-support@droessmj.com` for private questions. The prepared Pages workflow deploys only when manually run. Publication is a separate step.
+
+Read the [public release security review](docs/security/PUBLIC_RELEASE_REVIEW.md) before changing repository visibility. Current source/history still includes identity and personal schedule disclosures. See [SECURITY.md](SECURITY.md) for private vulnerability reporting.
+
 1. Set the paid Apple Developer team ID in `Config/Team.xcconfig`.
 2. `xcodegen generate`
 3. Choose the app’s scheme and a physical-device destination. In Xcode: Product → Archive → Distribute App → App Store Connect.
+
+## Support development
+
+If these apps are useful to you, you can [support development on Patreon](https://www.patreon.com/c/droessmj).
+Contributions are optional and do not unlock app features, grant commercial-use rights, or guarantee features, release dates, or support response times.
 
 ## License
 

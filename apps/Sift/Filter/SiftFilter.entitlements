@@ -6,9 +6,5 @@
 	<array>
 		<string>group.com.droessmj.sift</string>
 	</array>
-	<key>keychain-access-groups</key>
-	<array>
-		<string>$(AppIdentifierPrefix)com.droessmj.sift.shared</string>
-	</array>
 </dict>
 </plist>

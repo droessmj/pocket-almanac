@@ -69,6 +69,7 @@ struct HabitDetailView: View {
         let completed = samples.filter { $0.entry?.isComplete == true }.count
         let logged = samples.filter { $0.entry != nil && !$0.isDefault }.count
         let failed = samples.filter { $0.entry?.checkIn == .failed }.count
+        let hasProgress = habit.kind == .progress || samples.contains { $0.entry?.kind == .progress }
 
         return ScrollView {
             VStack(alignment: .leading, spacing: 22) {
@@ -112,18 +113,20 @@ struct HabitDetailView: View {
                     TrendChart(samples: samples, color: habit.color.tint).frame(height: 185)
                     HStack(spacing: 5) {
                         Circle().fill(habit.color.tint).frame(width: 6, height: 6)
-                        Text(habit.kind == .progress ? "% of that day’s goal" : "Pass = 100%  ·  × = fail")
+                        Text(hasProgress ? "% of that day’s goal · × = fail" : "Pass = 100%  ·  × = fail")
                             .font(.system(size: 10)).foregroundStyle(DaymarkTheme.secondary)
                         Spacer()
-                        Text(habit.kind == .checkIn ? "Passed unless marked failed" : "Gaps = unrecorded").font(.system(size: 10)).foregroundStyle(DaymarkTheme.secondary)
+                        Text(habit.kind == .checkIn
+                             ? (habit.defaultPassed ? "Passed unless marked failed" : "Failed unless marked passed")
+                             : "Gaps = unrecorded").font(.system(size: 10)).foregroundStyle(DaymarkTheme.secondary)
                     }
                 }.daymarkCard()
 
                 VStack(alignment: .leading, spacing: 14) {
                     Text("Showing up matters").font(DaymarkTheme.handwriting(23, relativeTo: .headline))
                     Text(habit.kind == .checkIn
-                         ? "\(completed) passed · \(failed) failed · \(samples.filter(\.isDefault).count) passed by default"
-                         : "\(completed) completed · \(failed) failed · \(samples.count - logged) unrecorded")
+                         ? "\(completed) passed · \(failed) failed · \(samples.filter(\.isDefault).count) \(habit.defaultPassed ? "passed" : "failed") by default"
+                         : "\(completed) completed · \(failed) failed · \(samples.filter { $0.entry == nil }.count) unrecorded")
                         .font(.caption).foregroundStyle(DaymarkTheme.secondary)
                     Text("Based on \(samples.count) \(samples.count == 1 ? "day" : "days") since \(max(habit.createdAt, samples.first?.date ?? habit.createdAt).formatted(date: .abbreviated, time: .omitted)). Today is included and can still be in progress.")
                         .font(.caption).foregroundStyle(DaymarkTheme.secondary)

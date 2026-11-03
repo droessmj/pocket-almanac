@@ -20,7 +20,7 @@ struct HabitsView: View {
                     Spacer()
                     Button { showAbout = true } label: {
                         Image(systemName: "info.circle").font(.title3).frame(width: 44, height: 44)
-                    }.accessibilityLabel("About Daymark and your data")
+                    }.accessibilityLabel("About Day in Ink and your data")
                 }.padding(.top, 18)
 
                 VStack(spacing: 12) {
@@ -80,17 +80,19 @@ struct HabitsView: View {
                 Section {
                     VStack(spacing: 12) {
                         Image(systemName: "pencil.and.outline").font(.system(size: 44, weight: .light)).foregroundStyle(DaymarkTheme.accent)
-                        Text("Daymark").font(DaymarkTheme.handwriting(36, relativeTo: .largeTitle))
+                        Text("Day in Ink").font(DaymarkTheme.handwriting(36, relativeTo: .largeTitle))
                         Text("A little better, every day.").foregroundStyle(.secondary)
                     }.frame(maxWidth: .infinity).padding(.vertical, 18)
                 }
                 Section("Your data") {
                     Text("Your habits and check-ins are saved on this iPhone. No account, ads, or analytics. Your app data can be included in your iPhone’s device backup.")
+                    NavigationLink("Export and import", destination: DataTransferView())
+                        .accessibilityIdentifier("data-transfer")
                 }
                 Section("A few helpful things") {
-                    Text("Tap + on a progress habit to add its quick-add amount. Pass / fail habits start passed; tap the checkmark to mark a failure, or tap × to restore a pass.")
+                    Text("Tap + on a progress habit to add its quick-add amount. Choose whether each pass / fail habit starts passed or failed in Edit habit. Tap its checkmark or × to switch the day's result.")
                     Text("Open a habit to record a failed day, enter an exact total, or edit a past check-in. You can also touch and hold a daily card for these actions.")
-                    Text("Trends count days from when a habit was created. Pass / fail days count as passed unless you mark a failure. Today can still be in progress.")
+                    Text("Trends count days from when a habit was created. Unrecorded pass / fail days use that habit's daily default. Changing the default updates unrecorded days; explicit check-ins stay as logged. Today can still be in progress.")
                     Text("Archiving keeps your history. Deleting a habit permanently removes its check-ins.")
                 }
             }

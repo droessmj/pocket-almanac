@@ -13,11 +13,13 @@ settings:
     CODE_SIGN_STYLE: Automatic
     TARGETED_DEVICE_FAMILY: "1"
     MARKETING_VERSION: "1.0.0"
-    CURRENT_PROJECT_VERSION: "1"
+    CURRENT_PROJECT_VERSION: "3"
     ITSAppUsesNonExemptEncryption: NO
 packages:
   HabitKit:
     path: packages/HabitKit
+  ExpectedCallsCore:
+    path: apps/ExpectedCalls/Core
 targets:
   Sift:
     type: application
@@ -26,7 +28,7 @@ targets:
     info:
       path: apps/Sift/App/Info.plist
       properties:
-        CFBundleDisplayName: Sift
+        CFBundleDisplayName: Blotter
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         UILaunchScreen: {}
@@ -40,6 +42,7 @@ targets:
       path: apps/Sift/App/Sift.entitlements
       properties:
         com.apple.security.application-groups: [group.com.droessmj.sift]
+        # Retained only so the app can delete activity saved by older builds.
         keychain-access-groups: [$(AppIdentifierPrefix)com.droessmj.sift.shared]
     settings:
       base:
@@ -51,17 +54,19 @@ targets:
   SiftFilter:
     type: app-extension
     platform: iOS
-    sources: [apps/Sift/Filter, apps/Sift/Shared]
+    sources:
+      - apps/Sift/Filter
+      - path: apps/Sift/Shared
+        excludes: [LegacyActivityCleanup.swift]
     info:
       path: apps/Sift/Filter/Info.plist
       properties:
-        CFBundleDisplayName: Sift Filter
+        CFBundleDisplayName: Blotter
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         NSExtension:
           NSExtensionPointIdentifier: com.apple.identitylookup.message-filter
           NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).MessageFilterExtension
-        SiftKeychainAccessGroup: $(AppIdentifierPrefix)com.droessmj.sift.shared
         # Filter extensions are signed with a team-prefixed bundle ID, so no resolvable key exists
         # for the privacy manifest; the manifest itself still ships.
         NSPrivacyAccessedAPITypeDescriptorBundleIdentifier: []
@@ -71,7 +76,6 @@ targets:
       path: apps/Sift/Filter/SiftFilter.entitlements
       properties:
         com.apple.security.application-groups: [group.com.droessmj.sift]
-        keychain-access-groups: [$(AppIdentifierPrefix)com.droessmj.sift.shared]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.droessmj.sift.filter
@@ -85,10 +89,12 @@ targets:
     info:
       path: apps/Daymark/Info.plist
       properties:
-        CFBundleDisplayName: Daymark
+        CFBundleDisplayName: Day in Ink
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         UILaunchScreen: {}
+        UIFileSharingEnabled: true
+        LSSupportsOpeningDocumentsInPlace: true
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         ITSAppUsesNonExemptEncryption: false
     settings:
@@ -110,6 +116,37 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
     dependencies:
       - target: Daymark
+  ExpectedCalls:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources: [apps/ExpectedCalls/App]
+    info:
+      path: apps/ExpectedCalls/Info.plist
+      properties:
+        CFBundleDisplayName: Expected Calls
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        UILaunchScreen: {}
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        ITSAppUsesNonExemptEncryption: false
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.droessmj.expectedcalls
+        TARGETED_DEVICE_FAMILY: "1"
+    dependencies:
+      - package: ExpectedCallsCore
+  ExpectedCallsUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources: [apps/ExpectedCalls/UITests]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.droessmj.expectedcalls.uitests
+        GENERATE_INFOPLIST_FILE: YES
+    dependencies:
+      - target: ExpectedCalls
 schemes:
   Sift:
     build:
@@ -122,3 +159,10 @@ schemes:
     test:
       targets:
         - DaymarkUITests
+  ExpectedCalls:
+    build:
+      targets:
+        ExpectedCalls: all
+    test:
+      targets:
+        - ExpectedCallsUITests

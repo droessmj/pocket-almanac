@@ -5,3 +5,26 @@ xcuserdata/
 .build/
 .swiftpm/
 *.xcresult/
+
+# Local credentials, signing material, and private device diagnostics.
+.DS_Store
+.env
+.env.*
+!.env.example
+.aws/
+.ssh/
+.codex/
+*.p8
+*.p12
+*.pfx
+*.key
+*.pem
+*.mobileprovision
+*.provisionprofile
+*.ipa
+*.xcarchive/
+*.logarchive/
+*.log
+**/activity.jsonl
+**/habits.json
+Config/Local.xcconfig

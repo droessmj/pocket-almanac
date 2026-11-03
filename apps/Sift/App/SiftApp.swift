@@ -7,15 +7,13 @@ import SwiftUI
 struct SiftApp: App {
     @State private var setupDone = (UserDefaults(suiteName: Sift.appGroup)?.bool(forKey: "setupDone")) ?? false
     @Environment(\.scenePhase) private var scenePhase
+    @State private var cleanupError: String?
 
     var body: some Scene {
         WindowGroup {
             Group {
                 if setupDone {
-                    TabView {
-                        Tab("Keywords", systemImage: "text.badge.xmark") { KeywordsView() }
-                        Tab("Activity", systemImage: "list.bullet.rectangle") { ActivityView() }
-                    }
+                    KeywordsView()
                 } else {
                     SetupView {
                         setupDone = true
@@ -25,10 +23,31 @@ struct SiftApp: App {
             }
             .onChange(of: scenePhase, initial: true) { _, phase in
                 if phase == .active {
-                    do { _ = try ActivityLog.load() }
-                    catch { ActivityLog.report(error) }
+                    removeOldActivity()
                 }
             }
+            .alert("Couldn’t remove old activity", isPresented: Binding(
+                get: { cleanupError != nil }, set: { if !$0 { cleanupError = nil } }
+            )) { Button("OK") { cleanupError = nil } }
+            message: { Text(cleanupError ?? "") }
+        }
+    }
+
+    private func removeOldActivity() {
+        let manager = FileManager.default
+        var files = manager.urls(for: .documentDirectory, in: .userDomainMask)
+            .map { $0.appendingPathComponent("activity.jsonl") }
+        if let shared = manager.containerURL(forSecurityApplicationGroupIdentifier: Sift.appGroup) {
+            files.append(shared.appendingPathComponent("activity.jsonl"))
+        }
+        do {
+            try LegacyActivityCleanup(
+                accessGroup: Bundle.main.object(forInfoDictionaryKey: "SiftKeychainAccessGroup") as? String,
+                fileURLs: files
+            ).run(defaults: UserDefaults(suiteName: Sift.appGroup))
+            cleanupError = nil
+        } catch {
+            cleanupError = "Previously saved activity couldn’t be fully removed. Your keyword rules are unchanged. Cleanup will retry the next time you open Blotter."
         }
     }
 }
@@ -39,14 +58,14 @@ struct SetupView: View {
     var body: some View {
         VStack(spacing: 16) {
             Image(systemName: "funnel.fill").font(.system(size: 64)).foregroundStyle(.indigo)
-            Text("Set up Sift").font(.title.bold())
+            Text("Set up Blotter").font(.title.bold())
             VStack(alignment: .leading, spacing: 10) {
-                LabeledContent("1", value: "In iPhone Settings, go to Apps → Messages → Text Message Filter and choose Sift.")
+                LabeledContent("1", value: "In iPhone Settings, go to Apps → Messages → Text Message Filter and choose Blotter.")
                 LabeledContent("2", value: "Add the keywords you want to block. Texts containing them go silently to Junk.")
-                LabeledContent("3", value: "Review recent activity and the reasons for matches in the Activity tab.")
+                LabeledContent("3", value: "Adjust case, accent, and whole-word matching to suit your rules.")
             }
             .font(.subheadline)
-            Text("Works on SMS/MMS from numbers not in your Contacts. Activity saves sender, time, verdict, and matched keyword on this iPhone. Full message text is never stored.")
+            Text("Works on SMS/MMS from numbers not in your Contacts. Filtering happens on your iPhone. Blotter doesn’t save messages or a history of keyword matches.")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
@@ -95,7 +114,7 @@ struct KeywordsView: View {
                         .onDelete { keywords.remove(atOffsets: $0); KeywordStore.save(keywords) }
                 }
             }
-            .navigationTitle("Sift")
+            .navigationTitle("Blotter")
         }
     }
 
@@ -115,76 +134,5 @@ struct KeywordsView: View {
         keywords.append(keyword)
         KeywordStore.save(keywords)
         draft = ""
-    }
-}
-
-struct ActivityView: View {
-    @State private var entries: [ActivityEntry] = []
-    @State private var confirmClear = false
-    @State private var errorMessage: String?
-    @Environment(\.scenePhase) private var scenePhase
-
-    var body: some View {
-        NavigationStack {
-            List {
-                if let errorMessage {
-                    Section {
-                        Label(errorMessage, systemImage: "exclamationmark.triangle")
-                        Button("Try again", action: reload)
-                    }
-                } else if entries.isEmpty {
-                    Text("No messages processed yet.").foregroundStyle(.secondary)
-                }
-                ForEach(entries) { entry in
-                    VStack(alignment: .leading, spacing: 2) {
-                        HStack {
-                            Text(entry.sender).font(.headline)
-                            Spacer()
-                            Text(entry.verdict == .spam ? "Spam" : "Allowed")
-                                .font(.caption.bold())
-                                .foregroundStyle(entry.verdict == .spam ? .red : .secondary)
-                        }
-                        Text(entry.received.formatted(date: .abbreviated, time: .standard))
-                            .font(.subheadline).foregroundStyle(.secondary)
-                        Text(entry.reason)
-                    }
-                }
-                Section {} footer: {
-                    Text("Shows up to \(ActivityLog.maxEntries) recent entries with a \(ActivityLog.retentionDays)-day history. Cleanup runs when Sift opens or processes a message. Activity saves sender, time, verdict, and matched keyword on this iPhone; full message text is never stored. Activity may be incomplete if storage is unavailable.")
-                }
-            }
-            .navigationTitle("Activity")
-            .toolbar {
-                Button("Clear", role: .destructive) { confirmClear = true }.disabled(entries.isEmpty && errorMessage == nil)
-            }
-            .confirmationDialog("Delete all activity?", isPresented: $confirmClear) {
-                Button("Delete All", role: .destructive, action: clear)
-            }
-            .refreshable { reload() }
-            .onAppear(perform: reload)
-            .onChange(of: scenePhase) { _, phase in if phase == .active { reload() } }
-        }
-    }
-
-    private func reload() {
-        do {
-            entries = try ActivityLog.load()
-            errorMessage = nil
-        } catch {
-            ActivityLog.report(error)
-            errorMessage = "Couldn’t refresh activity. Filtering still works. Unlock your iPhone and try again."
-        }
-    }
-
-    private func clear() {
-        do {
-            try ActivityLog.clear()
-            entries = []
-            errorMessage = nil
-            reload()
-        } catch {
-            ActivityLog.report(error)
-            errorMessage = "Couldn’t delete activity. Unlock your iPhone and try again."
-        }
     }
 }

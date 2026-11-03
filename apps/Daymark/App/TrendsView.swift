@@ -46,7 +46,7 @@ struct TrendsView: View {
                         }.daymarkCard()
                     }.buttonStyle(.plain)
                 }
-                Text("Trends include today and start on each habit’s creation date. Pass/fail habits count as passed unless marked failed. Numeric habits need recorded progress.")
+                Text("Trends include today and start on each habit’s creation date. Unrecorded pass/fail days use the daily default you choose for each habit. Numeric habits need recorded progress.")
                     .font(.caption).foregroundStyle(DaymarkTheme.secondary).padding(.bottom, 8)
             }.padding(.horizontal, 22).padding(.bottom, 18)
         }

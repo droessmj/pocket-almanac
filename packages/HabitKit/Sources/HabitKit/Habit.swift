@@ -19,10 +19,11 @@ public struct Habit: Identifiable, Codable, Hashable, Sendable {
     public var unit: String
     public var createdAt: Date
     public var isArchived: Bool
+    public var defaultPassed: Bool
 
     public init(id: UUID = UUID(), name: String, emoji: String, color: HabitColor,
                 kind: HabitKind, target: Double = 1, step: Double = 1, unit: String = "",
-                createdAt: Date = Date(), isArchived: Bool = false) {
+                createdAt: Date = Date(), isArchived: Bool = false, defaultPassed: Bool = true) {
         self.id = id
         self.name = name
         self.emoji = emoji
@@ -33,6 +34,27 @@ public struct Habit: Identifiable, Codable, Hashable, Sendable {
         self.unit = kind == .checkIn ? "" : unit
         self.createdAt = createdAt
         self.isArchived = isArchived
+        self.defaultPassed = defaultPassed
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, name, emoji, color, kind, target, step, unit, createdAt, isArchived, defaultPassed
+    }
+
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        id = try values.decode(UUID.self, forKey: .id)
+        name = try values.decode(String.self, forKey: .name)
+        emoji = try values.decode(String.self, forKey: .emoji)
+        color = try values.decode(HabitColor.self, forKey: .color)
+        kind = try values.decode(HabitKind.self, forKey: .kind)
+        target = try values.decode(Double.self, forKey: .target)
+        step = try values.decode(Double.self, forKey: .step)
+        unit = try values.decode(String.self, forKey: .unit)
+        createdAt = try values.decode(Date.self, forKey: .createdAt)
+        isArchived = try values.decode(Bool.self, forKey: .isArchived)
+        // Older archives implicitly passed every unrecorded pass/fail day.
+        defaultPassed = try values.decodeIfPresent(Bool.self, forKey: .defaultPassed) ?? true
     }
 
     public var isValid: Bool {
@@ -113,7 +135,7 @@ public struct HabitArchive: Codable, Equatable, Sendable {
         return entries.first { $0.habitID == habit.id && $0.day == day }
     }
 
-    /// Resolve an unrecorded pass/fail day as passed without writing synthetic history.
+    /// Resolve an unrecorded pass/fail day using its default without writing synthetic history.
     public func effectiveEntry(for habit: Habit, on date: Date, calendar: Calendar = .current,
                                now: Date = Date()) -> HabitEntry? {
         let day = HabitDay(date, calendar: calendar)
@@ -121,7 +143,8 @@ public struct HabitArchive: Codable, Equatable, Sendable {
               day <= HabitDay(now, calendar: calendar) else { return nil }
         if let recorded = entry(for: habit, on: date, calendar: calendar) { return recorded }
         guard habit.kind == .checkIn else { return nil }
-        return HabitEntry(habit: habit, date: date, checkIn: .passed, calendar: calendar)
+        return HabitEntry(habit: habit, date: date, checkIn: habit.defaultPassed ? .passed : .failed,
+                          calendar: calendar)
     }
 
     /// Only explicit check-ins are stored; zero remains a recorded progress value.
@@ -129,12 +152,13 @@ public struct HabitArchive: Codable, Equatable, Sendable {
                                 checkIn: CheckIn? = nil, calendar: Calendar = .current,
                                 now: Date = Date()) {
         let day = HabitDay(date, calendar: calendar)
+        let kind = entry(for: habit, on: date, calendar: calendar)?.kind ?? habit.kind
         guard day <= HabitDay(now, calendar: calendar),
               day >= HabitDay(habit.createdAt, calendar: calendar),
               habits.contains(where: { $0.id == habit.id }),
               value == nil || (value!.isFinite && value! >= 0),
-              (habit.kind == .progress && value != nil) ||
-              (habit.kind == .checkIn && checkIn != nil) else { return }
+              (kind == .progress && value != nil) ||
+              (kind == .checkIn && checkIn != nil) else { return }
         if let index = entries.firstIndex(where: { $0.habitID == habit.id && $0.day == day }) {
             // Preserve the original goal, unit and tracking mode for this day.
             if entries[index].kind == .checkIn {

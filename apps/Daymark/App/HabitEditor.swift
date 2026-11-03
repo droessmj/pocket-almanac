@@ -9,6 +9,7 @@ struct HabitEditor: View {
     @State private var emoji: String
     @State private var color: HabitColor
     @State private var kind: HabitKind
+    @State private var defaultPassed: Bool
     @State private var target: String
     @State private var step: String
     @State private var unit: String
@@ -21,6 +22,7 @@ struct HabitEditor: View {
         _emoji = State(initialValue: habit?.emoji ?? "🌱")
         _color = State(initialValue: habit?.color ?? .lavender)
         _kind = State(initialValue: habit?.kind ?? .checkIn)
+        _defaultPassed = State(initialValue: habit?.defaultPassed ?? true)
         _target = State(initialValue: (habit?.target ?? 30).formatted(.number.grouping(.never)))
         _step = State(initialValue: (habit?.step ?? 5).formatted(.number.grouping(.never)))
         _unit = State(initialValue: habit?.unit ?? "min")
@@ -86,8 +88,16 @@ struct HabitEditor: View {
                         Text("Pass / fail").tag(HabitKind.checkIn)
                         Text("Build progress").tag(HabitKind.progress)
                     }
-                    .pickerStyle(.segmented).disabled(original != nil)
-                    if kind == .progress {
+                    .pickerStyle(.segmented)
+                    if kind == .checkIn {
+                        Text("Daily default").font(.subheadline)
+                        Picker("Daily default", selection: $defaultPassed) {
+                            Text("Passed").tag(true)
+                            Text("Failed").tag(false)
+                        }
+                        .pickerStyle(.segmented)
+                        .accessibilityIdentifier("default-result")
+                    } else {
                         HStack {
                             Text("Daily goal")
                             TextField("30", text: $target).keyboardType(.decimalPad).multilineTextAlignment(.trailing)
@@ -107,10 +117,14 @@ struct HabitEditor: View {
                 } header: { Text("How you’ll track it") }
                 footer: {
                     Text(kind == .checkIn
-                         ? "Each day starts as passed. Mark a failure whenever needed."
+                         ? (defaultPassed ? "Each day starts as passed. Mark a failure whenever needed."
+                                          : "Each day starts as failed. Mark a pass when you complete it.")
                          : "Tap + on a habit to add progress. You can also enter an exact daily total. Goal changes apply to days you haven’t logged yet.")
                     if original != nil {
-                        Text("Tracking type stays the same to keep your history consistent.")
+                        Text("Tracking changes apply to unrecorded days. Recorded days keep their original tracking type, goal, and unit. Clear a recorded day to use the new type.")
+                        if kind == .checkIn {
+                            Text("Changing the daily default updates unrecorded days, including past days. Explicit passes and failures stay as you logged them.")
+                        }
                     }
                 }
             }
@@ -133,7 +147,8 @@ struct HabitEditor: View {
         let habit = Habit(id: original?.id ?? UUID(), name: name.trimmingCharacters(in: .whitespacesAndNewlines),
                           emoji: emoji, color: color, kind: kind, target: targetValue ?? 1,
                           step: stepValue ?? 1, unit: unit.trimmingCharacters(in: .whitespacesAndNewlines),
-                          createdAt: original?.createdAt ?? Date(), isArchived: original?.isArchived ?? false)
+                          createdAt: original?.createdAt ?? Date(), isArchived: original?.isArchived ?? false,
+                          defaultPassed: defaultPassed)
         if store.save(habit) { dismiss() }
     }
 }

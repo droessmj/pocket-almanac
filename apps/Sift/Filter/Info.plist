@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Sift Filter</string>
+	<string>Blotter</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -29,7 +29,5 @@
 	</dict>
 	<key>NSPrivacyAccessedAPITypeDescriptorBundleIdentifier</key>
 	<array/>
-	<key>SiftKeychainAccessGroup</key>
-	<string>$(AppIdentifierPrefix)com.droessmj.sift.shared</string>
 </dict>
 </plist>

@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self'; img-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+  <meta name="referrer" content="no-referrer">
+  <meta name="description" content="{{description}}">
+  <meta name="theme-color" content="{{theme_color}}">
+  <title>{{title}}</title>
+  <link rel="icon" href="{{root}}{{favicon}}" type="{{icon_type}}">
+  <link rel="stylesheet" href="{{root}}assets/styles.css">
+</head>
+<body class="theme-{{theme}}">
+  <a class="skip-link" href="#main">Skip to content</a>
+  <header class="site-header wrap">
+    <a class="wordmark" href="{{root}}index.html" aria-label="Pocket Almanac, home"><span class="app-pair" aria-hidden="true"><img src="{{root}}assets/day-in-ink-icon.png" width="32" height="32" alt=""><img src="{{root}}assets/blotter-icon.png" width="32" height="32" alt=""></span><span>Pocket Almanac<small>Personal projects, shared.</small></span></a>
+    <nav aria-label="Main navigation">
+      <a href="{{root}}day-in-ink/support.html">Day in Ink</a>
+      <a href="{{root}}blotter/support.html">Blotter</a>
+      <a href="{{repository_url}}">GitHub ↗</a>
+    </nav>
+  </header>
+  <main id="main" class="wrap" tabindex="-1">
+    {{app_badge}}
+    {{content}}
+  </main>
+  <footer class="site-footer wrap">
+    <div><span class="footer-signature">Built for my day-to-day. Shared in case they help yours.</span><p>© {{year}} <a href="{{repository_url}}">{{developer}}</a></p></div>
+    <nav aria-label="Support and privacy"><a href="{{issues_url}}">Issues &amp; support</a><a href="{{root}}day-in-ink/privacy.html">Day in Ink privacy</a><a href="{{root}}blotter/privacy.html">Blotter privacy</a></nav>
+  </footer>
+</body>
+</html>

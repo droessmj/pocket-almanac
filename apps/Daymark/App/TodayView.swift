@@ -109,7 +109,7 @@ struct TodayView: View {
             VStack(alignment: .leading, spacing: 5) {
                 HStack(spacing: 7) {
                     Image(systemName: "sun.horizon.fill")
-                    Text("DAYMARK").tracking(3)
+                    Text("DAY IN INK").tracking(3)
                 }
                 .font(.system(size: 10, weight: .bold))
                 .foregroundStyle(DaymarkTheme.accent)
@@ -239,6 +239,7 @@ struct HabitCard: View {
     let edit: () -> Void
 
     private var entry: HabitEntry? { store.entry(habit, on: date) }
+    private var kind: HabitKind { entry?.kind ?? habit.kind }
     private var complete: Bool { entry?.isComplete ?? false }
     private var streak: Int { store.archive.streak(for: habit, through: date) }
 
@@ -279,9 +280,9 @@ struct HabitCard: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityIdentifier("quick-\(habit.name)")
-                    .accessibilityLabel(habit.kind == .checkIn
+                    .accessibilityLabel(kind == .checkIn
                                         ? "\(complete ? "Mark failed" : "Mark passed") for \(habit.name)"
-                                        : "Add \(amount(habit.step)) \(habit.unit) to \(habit.name)")
+                                        : "Add \(amount(habit.step)) \(entry?.unit ?? habit.unit) to \(habit.name)")
                 }
             }
             .padding(.horizontal, 16).padding(.vertical, 16)
@@ -299,7 +300,7 @@ struct HabitCard: View {
         }
         .contextMenu {
             Button("Edit this day", systemImage: "pencil", action: edit)
-            if habit.kind == .checkIn {
+            if kind == .checkIn {
                 Button("Mark passed", systemImage: "checkmark") { store.record(habit, on: date, checkIn: .passed) }
                 Button("Mark failed", systemImage: "xmark") { store.record(habit, on: date, checkIn: .failed) }
             }
@@ -311,10 +312,12 @@ struct HabitCard: View {
     }
 
     private var status: String {
-        if habit.kind == .checkIn {
+        if kind == .checkIn {
             switch entry?.checkIn {
             case .passed: "Passed ✓"
-            case .failed: "Failed · try again tomorrow"
+            case .failed:
+                store.archive.entry(for: habit, on: date) == nil
+                    ? "Not yet · mark passed when done" : "Failed · try again tomorrow"
             case nil: "Daily check-in"
             }
         } else {
