@@ -23,7 +23,7 @@
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>NSPrivacyAccessedAPITypeDescriptorBundleIdentifier</key>
-	<string>com.droessmj.sift</string>
+	<string>com.droessmj.blotter</string>
 	<key>SiftKeychainAccessGroup</key>
 	<string>$(AppIdentifierPrefix)com.droessmj.sift.shared</string>
 	<key>UILaunchScreen</key>

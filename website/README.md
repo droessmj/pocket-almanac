@@ -93,7 +93,7 @@ Use these exact App Store Connect URLs after verifying the domain and public HTT
 | Day in Ink | `https://apps.droessmj.com/day-in-ink/support.html` | `https://apps.droessmj.com/day-in-ink/privacy.html` |
 | Blotter | `https://apps.droessmj.com/blotter/support.html` | `https://apps.droessmj.com/blotter/privacy.html` |
 
-Use `https://apps.droessmj.com/` as the Marketing URL for both apps. Use the listing URL table above; entering these URLs in App Store Connect and adding accessible links inside the apps remain separate release tasks. No App Store download links have been added to the site.
+Use `https://apps.droessmj.com/` as the Marketing URL for both apps. Copy-ready record and listing fields are in [APP_STORE_CONNECT.json](../APP_STORE_CONNECT.json); entering them in App Store Connect remains an authenticated account task. Both apps now expose native support/privacy links in their source. No App Store download links have been added to the site.
 
 Apple requires working [support and privacy links](https://developer.apple.com/app-store/review/), including an easily accessible privacy-policy link [within each app](https://developer.apple.com/app-store/review/guidelines/#privacy). These pages provide the relevant content; approval still depends on the final app and submission.
 

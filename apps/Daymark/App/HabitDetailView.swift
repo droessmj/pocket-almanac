@@ -41,15 +41,26 @@ struct HabitDetailView: View {
             historySelected = false
         }) {
             if let habit {
+                let now = Date()
+                let historyRange = habit.historyDateRange(through: now)
                 NavigationStack {
-                    DatePicker("Choose a day", selection: $historyDate,
-                               in: Calendar.current.startOfDay(for: habit.createdAt)...Date(), displayedComponents: .date)
-                        .datePickerStyle(.graphical).padding()
+                    Group {
+                        if let historyRange {
+                            DatePicker("Choose a day", selection: $historyDate,
+                                       in: historyRange, displayedComponents: .date)
+                                .datePickerStyle(.graphical).padding()
+                        } else {
+                            ContentUnavailableView("This habit starts in the future",
+                                                   systemImage: "calendar",
+                                                   description: Text("History will be available on its start date. Check your iPhone’s date and time if this is unexpected."))
+                        }
+                    }
                         .navigationTitle("Review a day").navigationBarTitleDisplayMode(.inline)
                         .toolbar {
                             ToolbarItem(placement: .cancellationAction) { Button("Cancel") { showHistory = false } }
                             ToolbarItem(placement: .confirmationAction) {
                                 Button("Check in") { historySelected = true; showHistory = false }
+                                    .disabled(historyRange == nil)
                             }
                         }
                 }.presentationDetents([.medium, .large])

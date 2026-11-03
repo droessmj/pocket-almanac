@@ -12,7 +12,7 @@ final class MessageFilterExtension: ILMessageFilterExtension {
         // Deletion-only upgrade cleanup in the extension's own private container.
         do { try LegacyLogFileCleanup.removePrivateLog() }
         catch {
-            Logger(subsystem: "com.droessmj.sift", category: "LegacyCleanup")
+            Logger(subsystem: "com.droessmj.blotter", category: "LegacyCleanup")
                 .error("Old private activity file cleanup failed; it will retry on the next extension launch.")
         }
     }

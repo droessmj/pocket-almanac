@@ -23,8 +23,8 @@ struct HabitEditor: View {
         _color = State(initialValue: habit?.color ?? .lavender)
         _kind = State(initialValue: habit?.kind ?? .checkIn)
         _defaultPassed = State(initialValue: habit?.defaultPassed ?? true)
-        _target = State(initialValue: (habit?.target ?? 30).formatted(.number.grouping(.never)))
-        _step = State(initialValue: (habit?.step ?? 5).formatted(.number.grouping(.never)))
+        _target = State(initialValue: editableAmount(habit?.target ?? 30))
+        _step = State(initialValue: editableAmount(habit?.step ?? 5))
         _unit = State(initialValue: habit?.unit ?? "min")
     }
 
@@ -32,7 +32,10 @@ struct HabitEditor: View {
     private var stepValue: Double? { parseAmount(step) }
     private var valid: Bool {
         !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        name.trimmingCharacters(in: .whitespacesAndNewlines).unicodeScalars.count <= ArchiveLimits.maxNameScalars &&
         !emoji.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        emoji.unicodeScalars.count <= ArchiveLimits.maxEmojiScalars &&
+        unit.trimmingCharacters(in: .whitespacesAndNewlines).unicodeScalars.count <= ArchiveLimits.maxUnitScalars &&
         (kind == .checkIn || ((targetValue ?? 0) > 0 && (stepValue ?? 0) > 0 && !unit.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty))
     }
 
@@ -158,4 +161,9 @@ func parseAmount(_ text: String) -> Double? {
         .replacingOccurrences(of: Locale.current.decimalSeparator ?? ".", with: ".")
     guard let value = Double(normalized), value.isFinite else { return nil }
     return value
+}
+
+/// Double's shortest round-trippable representation, localized only for the decimal separator.
+func editableAmount(_ value: Double, locale: Locale = .current) -> String {
+    String(value).replacingOccurrences(of: ".", with: locale.decimalSeparator ?? ".")
 }

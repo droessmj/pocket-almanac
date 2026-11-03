@@ -95,6 +95,10 @@ struct HabitsView: View {
                     Text("Trends count days from when a habit was created. Unrecorded pass / fail days use that habit's daily default. Changing the default updates unrecorded days; explicit check-ins stay as logged. Today can still be in progress.")
                     Text("Archiving keeps your history. Deleting a habit permanently removes its check-ins.")
                 }
+                Section("Support and privacy") {
+                    Link("Help & Support", destination: URL(string: "https://apps.droessmj.com/day-in-ink/support.html")!)
+                    Link("Privacy Policy", destination: URL(string: "https://apps.droessmj.com/day-in-ink/privacy.html")!)
+                }
             }
             .navigationTitle("Made for small steps").navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { showAbout = false } } }

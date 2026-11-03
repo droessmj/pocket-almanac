@@ -7,7 +7,7 @@ Personal iPhone apps, built primarily for my own use and shared in case others f
 | [Blotter](apps/Sift) | On-device SMS keyword filter | 26 |
 | [Day in Ink](apps/Daymark) | Daily pass/fail and progress habits, with per-habit trends | 17 |
 
-App Store titles are **Blotter: Message Filter** and **Day in Ink: Habit Tracker**. Xcode schemes and source paths remain Sift and Daymark; existing bundle IDs and data storage identifiers are retained for updates.
+App Store titles are **Blotter: Message Filter** and **Day in Ink: Habit Tracker**. Xcode schemes and source paths remain Sift and Daymark. Blotter now uses `com.droessmj.blotter` and `com.droessmj.blotter.filter`; its legacy App Group and cleanup Keychain identifiers are intentionally retained. This is a new app identity, not an update to the old Sift bundle. Day in Ink retains its original bundle ID and private storage.
 
 ```text
 apps/
@@ -52,6 +52,8 @@ To add another app, put its files in `apps/<Name>`, add an application target an
 ## Release
 
 Track preparation, validation, and launch in [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md). Public support and privacy content is maintained in [website/src](website/src/). Root docs/ material is kept outside version control.
+
+Copy-ready app-record and listing fields are prepared in [APP_STORE_CONNECT.json](APP_STORE_CONNECT.json), including SKUs, language, URLs, descriptions, keywords, review notes, and TestFlight instructions. These are local preparation, not live records: authenticated App Store Connect access, exact-name/SKU acceptance, private review phone details, screenshots, and signed uploads remain account/release tasks.
 
 The GitHub Pages support website is in [website/](website/README.md). Open [the built home page](website/dist/index.html) for a local preview. It includes separate support and privacy pages for Day in Ink and Blotter, links to this repository’s Issues tab, and offers `app-support@droessmj.com` for private questions. The prepared Pages workflow deploys only when manually run. Publication is a separate step.
 

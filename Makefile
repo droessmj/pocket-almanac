@@ -9,6 +9,7 @@ TEST_DESTINATION ?= platform=iOS Simulator,name=iPhone 18 Pro
 generate:
 	xcodegen generate
 
+# Simulator signing preserves the entitlements required by shared preferences and Keychain cleanup.
 build: generate
 	xcodebuild -project Sift.xcodeproj -scheme $(APP) -destination 'generic/platform=iOS Simulator' -derivedDataPath build/$(APP) CODE_SIGN_IDENTITY=- build
 

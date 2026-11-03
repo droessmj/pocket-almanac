@@ -6,6 +6,7 @@ import Observation
 final class HabitStore {
     private(set) var archive = HabitArchive()
     private(set) var ready = false
+    private(set) var needsLegacyCalendar = false
     var errorMessage: String?
     private let file: ArchiveFile
 
@@ -31,6 +32,7 @@ final class HabitStore {
     }
 
     func load() {
+        needsLegacyCalendar = false
         do {
             if let saved = try file.load() {
                 archive = saved
@@ -40,9 +42,30 @@ final class HabitStore {
                 archive = initial
             }
             ready = true
+        } catch ArchiveValidationError.legacyCalendarRequired {
+            ready = false
+            needsLegacyCalendar = true
+            errorMessage = nil
         } catch {
             ready = false
             errorMessage = "Your habits couldn’t be opened. Your saved file has been kept. \(error.localizedDescription)"
+        }
+    }
+
+    /// Old archives did not record their calendar. Convert only after the user identifies it.
+    func migrateLegacyArchive(using calendar: Calendar) {
+        do {
+            guard let saved = try file.load(legacyCalendar: calendar) else {
+                load()
+                return
+            }
+            try file.save(saved)
+            archive = saved
+            ready = true
+            needsLegacyCalendar = false
+            errorMessage = nil
+        } catch {
+            errorMessage = "Your saved file has been kept. \(error.localizedDescription)"
         }
     }
 

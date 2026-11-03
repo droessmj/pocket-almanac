@@ -50,6 +50,9 @@ struct RootView: View {
                     .safeAreaInset(edge: .bottom, spacing: 0) { tabBar }
                     .navigationDestination(for: Habit.self) { habit in HabitDetailView(habitID: habit.id) }
                 }
+            } else if store.needsLegacyCalendar {
+                LegacyCalendarPicker(title: "Upgrade your saved history",
+                                     onChoose: store.migrateLegacyArchive)
             } else {
                 ContentUnavailableView {
                     Label("Couldn’t open your habits", systemImage: "externaldrive.badge.exclamationmark")
@@ -58,6 +61,8 @@ struct RootView: View {
                 } actions: {
                     Button("Try again") { store.load() }.buttonStyle(.borderedProminent)
                     Button("Import a backup") { showDataTransfer = true }
+                    Link("Help & Support", destination: URL(string: "https://apps.droessmj.com/day-in-ink/support.html")!)
+                    Link("Privacy Policy", destination: URL(string: "https://apps.droessmj.com/day-in-ink/privacy.html")!)
                 }
             }
         }

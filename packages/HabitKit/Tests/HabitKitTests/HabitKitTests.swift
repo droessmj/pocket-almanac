@@ -90,7 +90,8 @@ final class HabitKitTests: XCTestCase {
         var habits = try XCTUnwrap(object["habits"] as? [[String: Any]])
         for index in habits.indices { habits[index].removeValue(forKey: "defaultPassed") }
         object["habits"] = habits
-        let imported = try ArchiveFile.decode(JSONSerialization.data(withJSONObject: object))
+        object["version"] = 1
+        let imported = try ArchiveFile.decode(JSONSerialization.data(withJSONObject: object), legacyCalendar: calendar)
         XCTAssertEqual(imported, archive)
         XCTAssertTrue(imported.habits.allSatisfy(\.defaultPassed))
         XCTAssertTrue(imported.isComplete(imported.habits[0], on: date(2), calendar: calendar))

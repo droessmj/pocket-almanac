@@ -33,7 +33,7 @@ targets:
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait, UIInterfaceOrientationPortraitUpsideDown, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
         ITSAppUsesNonExemptEncryption: false
         SiftKeychainAccessGroup: $(AppIdentifierPrefix)com.droessmj.sift.shared
-        NSPrivacyAccessedAPITypeDescriptorBundleIdentifier: com.droessmj.sift
+        NSPrivacyAccessedAPITypeDescriptorBundleIdentifier: com.droessmj.blotter
     privacyManifest:
       path: apps/Sift/Shared/PrivacyInfo.xcprivacy
     entitlements:
@@ -44,7 +44,7 @@ targets:
         keychain-access-groups: [$(AppIdentifierPrefix)com.droessmj.sift.shared]
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.droessmj.sift
+        PRODUCT_BUNDLE_IDENTIFIER: com.droessmj.blotter
         TARGETED_DEVICE_FAMILY: "1"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
     dependencies:
@@ -76,7 +76,7 @@ targets:
         com.apple.security.application-groups: [group.com.droessmj.sift]
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.droessmj.sift.filter
+        PRODUCT_BUNDLE_IDENTIFIER: com.droessmj.blotter.filter
         TARGETED_DEVICE_FAMILY: "1"
 
   Daymark:

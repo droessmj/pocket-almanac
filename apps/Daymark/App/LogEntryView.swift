@@ -51,8 +51,7 @@ struct LogEntryView: View {
                         HStack(spacing: 12) {
                             ForEach([1.0, 2.0, 5.0], id: \.self) { multiplier in
                                 Button("+\(amount(habit.step * multiplier))") {
-                                    value = ((parseAmount(value) ?? 0) + habit.step * multiplier)
-                                        .formatted(.number.grouping(.never).precision(.fractionLength(0...6)))
+                                    value = editableAmount((parseAmount(value) ?? 0) + habit.step * multiplier)
                                 }
                                 .buttonStyle(.bordered).tint(habit.color.tint).frame(maxWidth: .infinity)
                             }
@@ -81,7 +80,7 @@ struct LogEntryView: View {
                 ToolbarItem(placement: .confirmationAction) { Button("Save", action: save).bold().disabled(!valid) }
             }
             .onAppear {
-                value = (existing?.value ?? 0).formatted(.number.grouping(.never).precision(.fractionLength(0...6)))
+                value = editableAmount(existing?.value ?? 0)
                 checkIn = existing?.checkIn
             }
         }

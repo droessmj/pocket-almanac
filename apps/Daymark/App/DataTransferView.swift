@@ -29,6 +29,8 @@ struct DataTransferView: View {
     @State private var isConfirmingImport = false
     @State private var pendingImport: HabitArchive?
     @State private var notice: TransferNotice?
+    @State private var legacyBackup: LegacyBackupRequest?
+    @State private var readingBackup = false
 
     private var backupFilename: String {
         let formatter = ISO8601DateFormatter()
@@ -51,6 +53,8 @@ struct DataTransferView: View {
             Section {
                 Button("Import backup", systemImage: "square.and.arrow.down") { isImporting = true }
                     .accessibilityIdentifier("import-backup")
+                    .disabled(readingBackup)
+                if readingBackup { ProgressView("Reading backup…") }
             } header: {
                 Text("Import")
             } footer: {
@@ -83,14 +87,9 @@ struct DataTransferView: View {
         }
         // Some Files providers classify JSON backups as generic data. Validate the contents below.
         .fileImporter(isPresented: $isImporting, allowedContentTypes: [.json, .data]) { result in
-            do {
-                let url = try result.get()
-                let accessed = url.startAccessingSecurityScopedResource()
-                defer { if accessed { url.stopAccessingSecurityScopedResource() } }
-                let data = try Data(contentsOf: url)
-                pendingImport = try ArchiveFile.decode(data)
-            } catch {
-                report(error, title: "Couldn’t import backup", unchanged: true)
+            switch result {
+            case .success(let url): importBackup(from: url)
+            case .failure(let error): report(error, title: "Couldn’t import backup", unchanged: true)
             }
         }
         .confirmationDialog("Replace all Day in Ink data?", isPresented: $isConfirmingImport,
@@ -103,6 +102,33 @@ struct DataTransferView: View {
         }
         .alert(item: $notice) { notice in
             Alert(title: Text(notice.title), message: Text(notice.message), dismissButton: .default(Text("OK")))
+        }
+        .sheet(item: $legacyBackup) { request in
+            LegacyCalendarPicker(title: "Import an older backup", onChoose: { calendar in
+                legacyBackup = nil
+                importBackup(from: request.url, legacyCalendar: calendar)
+            }, onCancel: { legacyBackup = nil })
+        }
+    }
+
+    private func importBackup(from url: URL, legacyCalendar: Calendar? = nil) {
+        readingBackup = true
+        pendingImport = nil
+        Task {
+            let accessed = url.startAccessingSecurityScopedResource()
+            defer {
+                if accessed { url.stopAccessingSecurityScopedResource() }
+                readingBackup = false
+            }
+            do {
+                pendingImport = try await Task.detached(priority: .userInitiated) {
+                    try ArchiveFile.read(from: url, legacyCalendar: legacyCalendar)
+                }.value
+            } catch ArchiveValidationError.legacyCalendarRequired {
+                legacyBackup = LegacyBackupRequest(url: url)
+            } catch {
+                report(error, title: "Couldn’t import backup", unchanged: true)
+            }
         }
     }
 
@@ -137,4 +163,62 @@ private struct TransferNotice: Identifiable {
     let id = UUID()
     let title: String
     let message: String
+}
+
+private struct LegacyBackupRequest: Identifiable {
+    let id = UUID()
+    let url: URL
+}
+
+/// Version 1 saved day components without a calendar identifier; never silently guess one.
+struct LegacyCalendarPicker: View {
+    let title: String
+    let onChoose: (Calendar) -> Void
+    var onCancel: (() -> Void)?
+    @State private var identifier = Calendar.current.identifier
+
+    private let calendars: [(Calendar.Identifier, String)] = [
+        (.gregorian, "Gregorian"), (.buddhist, "Buddhist"), (.chinese, "Chinese"),
+        (.coptic, "Coptic"), (.ethiopicAmeteMihret, "Ethiopic (Amete Mihret)"),
+        (.ethiopicAmeteAlem, "Ethiopic (Amete Alem)"), (.hebrew, "Hebrew"),
+        (.iso8601, "ISO 8601"), (.indian, "Indian"), (.islamic, "Islamic"),
+        (.islamicCivil, "Islamic Civil"), (.islamicTabular, "Islamic Tabular"),
+        (.islamicUmmAlQura, "Islamic Umm al-Qura"), (.japanese, "Japanese"),
+        (.persian, "Persian"), (.republicOfChina, "Republic of China")
+    ]
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    Text("Older versions saved day numbers without identifying their calendar. Choose the iPhone calendar used when this history was recorded—not a different calendar you selected later.")
+                    Picker("Original calendar", selection: $identifier) {
+                        ForEach(calendars, id: \.0) { calendar in
+                            Text(calendar.1).tag(calendar.0)
+                        }
+                    }
+                    .accessibilityIdentifier("legacy-calendar")
+                    Text("If you never changed your iPhone’s calendar, use the selection shown. Your existing data is kept if conversion fails.")
+                    Text("Some older calendars require era or leap-month information that the old file did not store. If conversion is unavailable, keep the original file and contact support instead of guessing.")
+                    Button("Use this calendar") {
+                        var calendar = Calendar(identifier: identifier)
+                        calendar.timeZone = .current
+                        onChoose(calendar)
+                    }
+                    .accessibilityIdentifier("confirm-legacy-calendar")
+                }
+                Section("Support and privacy") {
+                    Link("Help & Support", destination: URL(string: "https://apps.droessmj.com/day-in-ink/support.html")!)
+                    Link("Privacy Policy", destination: URL(string: "https://apps.droessmj.com/day-in-ink/privacy.html")!)
+                }
+            }
+            .navigationTitle(title)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                if let onCancel {
+                    ToolbarItem(placement: .cancellationAction) { Button("Cancel", action: onCancel) }
+                }
+            }
+        }
+    }
 }

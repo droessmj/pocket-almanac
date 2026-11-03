@@ -56,24 +56,35 @@ struct SetupView: View {
     let onDone: () -> Void
 
     var body: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "funnel.fill").font(.system(size: 64)).foregroundStyle(.indigo)
-            Text("Set up Blotter").font(.title.bold())
-            VStack(alignment: .leading, spacing: 10) {
-                LabeledContent("1", value: "In iPhone Settings, go to Apps → Messages → Text Message Filter and choose Blotter.")
-                LabeledContent("2", value: "Add the keywords you want to block. Texts containing them go silently to Junk.")
-                LabeledContent("3", value: "Adjust case, accent, and whole-word matching to suit your rules.")
+        ScrollView {
+            VStack(spacing: 20) {
+                Image(systemName: "funnel.fill")
+                    .font(.system(size: 64))
+                    .foregroundStyle(.indigo)
+                    .accessibilityHidden(true)
+                Text("Set up Blotter")
+                    .font(.title.bold())
+                    .accessibilityAddTraits(.isHeader)
+                VStack(alignment: .leading, spacing: 16) {
+                    Text("1. In iPhone Settings, go to Apps → Messages → Text Message Filter and choose Blotter.")
+                    Text("2. Add the keywords you want to block. Texts containing them go silently to Junk.")
+                    Text("3. Adjust case, accent, and whole-word matching to suit your rules.")
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                Text("Works on SMS/MMS from numbers not in your Contacts. Filtering happens on your iPhone. Blotter doesn’t save messages or a history of keyword matches.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                Button("Get started", action: onDone)
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                VStack(spacing: 16) {
+                    HelpAndPrivacyLinks()
+                }
             }
-            .font(.subheadline)
-            Text("Works on SMS/MMS from numbers not in your Contacts. Filtering happens on your iPhone. Blotter doesn’t save messages or a history of keyword matches.")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-            Button("Get started", action: onDone)
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
+            .padding(24)
+            .frame(maxWidth: .infinity)
         }
-        .padding(24)
     }
 }
 
@@ -94,7 +105,7 @@ struct KeywordsView: View {
                         Button("Add", action: add).disabled(trimmedDraft.isEmpty)
                     }
                 } footer: {
-                    Text("Texts from unknown senders containing any keyword go silently to Spam. Senders in Contacts and iMessage are never filtered.")
+                    Text("Texts from unknown senders containing any keyword go silently to Junk. Senders in Contacts and iMessage are never filtered.")
                 }
                 Section {
                     Toggle("Match case", isOn: $options.matchCase)
@@ -112,6 +123,9 @@ struct KeywordsView: View {
                     }
                     ForEach(keywords, id: \.self) { Text($0) }
                         .onDelete { keywords.remove(atOffsets: $0); KeywordStore.save(keywords) }
+                }
+                Section("Help & Privacy") {
+                    HelpAndPrivacyLinks()
                 }
             }
             .navigationTitle("Blotter")
@@ -134,5 +148,14 @@ struct KeywordsView: View {
         keywords.append(keyword)
         KeywordStore.save(keywords)
         draft = ""
+    }
+}
+
+private struct HelpAndPrivacyLinks: View {
+    var body: some View {
+        Group {
+            Link("Help & Support", destination: URL(string: "https://apps.droessmj.com/blotter/support.html")!)
+            Link("Privacy Policy", destination: URL(string: "https://apps.droessmj.com/blotter/privacy.html")!)
+        }
     }
 }

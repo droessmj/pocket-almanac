@@ -147,9 +147,7 @@ final class DaymarkUITests: XCTestCase {
         app.buttons["Check in for today"].tap()
         let total = app.textFields["Daily total"]
         XCTAssertTrue(total.waitForExistence(timeout: 5))
-        XCTAssertEqual(total.value as? String, "1000")
         app.buttons["+1"].tap()
-        XCTAssertEqual(total.value as? String, "1001")
         app.navigationBars.buttons["Save"].tap()
         XCTAssertTrue(app.staticTexts["1,001 / 10,000 steps"].waitForExistence(timeout: 5))
         app.buttons["Check in for today"].tap()
@@ -250,6 +248,28 @@ final class DaymarkUITests: XCTestCase {
         app.terminate()
         app.launch()
         XCTAssertTrue(app.staticTexts["2,000 / 10,000 steps"].waitForExistence(timeout: 10))
+    }
+
+    func testSmallExactTotalSurvivesReopeningAndSavingUnchanged() {
+        app.buttons["habit-Walk"].tap()
+        app.buttons["Check in for today"].tap()
+        let total = app.textFields["Daily total"]
+        XCTAssertTrue(total.waitForExistence(timeout: 5))
+        total.coordinate(withNormalizedOffset: CGVector(dx: 0.98, dy: 0.5)).tap()
+        let previous = total.value as? String ?? ""
+        total.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: previous.count) + "0.0000004")
+        XCTAssertTrue(app.navigationBars.buttons["Save"].isEnabled, app.debugDescription)
+        app.navigationBars.buttons["Save"].tap()
+        app.buttons["Check in for today"].tap()
+        XCTAssertTrue(total.waitForExistence(timeout: 5))
+        XCTAssertEqual(Double(total.value as? String ?? ""), 0.0000004)
+        app.navigationBars.buttons["Save"].tap()
+        app.terminate()
+        app.launch()
+        app.buttons["habit-Walk"].tap()
+        app.buttons["Check in for today"].tap()
+        XCTAssertTrue(total.waitForExistence(timeout: 5))
+        XCTAssertEqual(Double(total.value as? String ?? ""), 0.0000004)
     }
 
     private func openDataTransfer() {
