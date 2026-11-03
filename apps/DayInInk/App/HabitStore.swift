@@ -11,10 +11,10 @@ final class HabitStore {
     private let file: ArchiveFile
 
     init() {
-        var directory = URL.applicationSupportDirectory.appendingPathComponent("Daymark", isDirectory: true)
+        var directory = URL.applicationSupportDirectory.appendingPathComponent("DayInInk", isDirectory: true)
         #if DEBUG
-        if let testID = ProcessInfo.processInfo.environment["DAYMARK_TEST_STORE"], UUID(uuidString: testID) != nil {
-            directory = URL.temporaryDirectory.appendingPathComponent("DaymarkTests-\(testID)", isDirectory: true)
+        if let testID = ProcessInfo.processInfo.environment["DAYININK_TEST_STORE"], UUID(uuidString: testID) != nil {
+            directory = URL.temporaryDirectory.appendingPathComponent("DayInInkTests-\(testID)", isDirectory: true)
         }
         #endif
         file = ArchiveFile(url: directory.appendingPathComponent("habits.json"))

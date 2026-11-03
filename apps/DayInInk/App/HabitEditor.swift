@@ -47,7 +47,7 @@ struct HabitEditor: View {
                         Text(emoji).font(.system(size: 36)).frame(width: 68, height: 68)
                             .background(color.tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 20))
                         VStack(alignment: .leading, spacing: 5) {
-                            Text("One small promise").font(DaymarkTheme.handwriting(24, relativeTo: .headline))
+                            Text("One small promise").font(DayInInkTheme.handwriting(24, relativeTo: .headline))
                             Text("Build a routine that feels like you.").font(.caption).foregroundStyle(.secondary)
                         }
                     }.frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 8)

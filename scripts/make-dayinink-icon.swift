@@ -1,11 +1,11 @@
-// Run from the repository root: swift scripts/make-daymark-icon.swift
+// Run from the repository root: swift scripts/make-dayinink-icon.swift
 import CoreGraphics
 import Foundation
 import ImageIO
 import UniformTypeIdentifiers
 
 let size = 1024
-let output = URL(fileURLWithPath: "apps/Daymark/Assets.xcassets/AppIcon.appiconset/icon-1024.png")
+let output = URL(fileURLWithPath: "apps/DayInInk/Assets.xcassets/AppIcon.appiconset/icon-1024.png")
 let space = CGColorSpace(name: CGColorSpace.sRGB)!
 let context = CGContext(data: nil, width: size, height: size, bitsPerComponent: 8, bytesPerRow: 0,
                         space: space, bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)!

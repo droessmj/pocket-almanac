@@ -15,7 +15,7 @@
         "platform": "iOS",
         "name": "Day in Ink: Habit Tracker",
         "primary_language": "en-US",
-        "bundle_id": "com.droessmj.daymark",
+        "bundle_id": "com.droessmj.dayinink",
         "sku": "day-in-ink-ios",
         "user_access": "Full Access"
       },

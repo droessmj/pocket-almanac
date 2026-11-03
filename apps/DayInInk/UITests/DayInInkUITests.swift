@@ -1,14 +1,14 @@
 import XCTest
 
 @MainActor
-final class DaymarkUITests: XCTestCase {
+final class DayInInkUITests: XCTestCase {
     private var app: XCUIApplication!
 
     override func setUpWithError() throws {
         continueAfterFailure = false
         app = XCUIApplication()
         app.launchArguments = ["-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
-        app.launchEnvironment["DAYMARK_TEST_STORE"] = UUID().uuidString
+        app.launchEnvironment["DAYININK_TEST_STORE"] = UUID().uuidString
         app.launch()
         XCTAssertTrue(app.buttons["quick-Walk"].waitForExistence(timeout: 10))
     }
@@ -214,7 +214,7 @@ final class DaymarkUITests: XCTestCase {
         app.buttons["quick-Walk"].tap()
         openDataTransfer()
         app.buttons["export-backup"].tap()
-        let name = "DaymarkRestore-\(UUID().uuidString)"
+        let name = "DayInInkRestore-\(UUID().uuidString)"
         let filename = app.textFields["DOCPicker.filenameTextField"]
         XCTAssertTrue(filename.waitForExistence(timeout: 10))
         filename.tap()

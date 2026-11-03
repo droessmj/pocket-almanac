@@ -5,14 +5,14 @@ Personal iPhone apps, built primarily for my own use and shared in case others f
 | App | Purpose | Minimum iOS |
 | --- | --- | --- |
 | [Blotter](apps/Sift) | On-device SMS keyword filter | 26 |
-| [Day in Ink](apps/Daymark) | Daily pass/fail and progress habits, with per-habit trends | 17 |
+| [Day in Ink](apps/DayInInk) | Daily pass/fail and progress habits, with per-habit trends | 17 |
 
-App Store titles are **Blotter: Message Filter** and **Day in Ink: Habit Tracker**. Xcode schemes and source paths remain Sift and Daymark. Blotter now uses `com.droessmj.blotter` and `com.droessmj.blotter.filter`; its legacy App Group and cleanup Keychain identifiers are intentionally retained. This is a new app identity, not an update to the old Sift bundle. Day in Ink retains its original bundle ID and private storage.
+App Store titles are **Blotter: Message Filter** and **Day in Ink: Habit Tracker**. Xcode schemes and source paths are Sift and DayInInk. Blotter uses `com.droessmj.blotter` and `com.droessmj.blotter.filter`; its legacy App Group and cleanup Keychain identifiers are intentionally retained. This is a new app identity, not an update to the old Sift bundle. Day in Ink now uses `com.droessmj.dayinink` with private storage.
 
 ```text
 apps/
   Sift/            # Existing app, message filter extension, and Sift-only shared code
-  Daymark/         # Habit tracker, assets, and UI tests
+  DayInInk/        # Habit tracker, assets, and UI tests
 packages/
   HabitKit/        # Tracking models, persistence, calendar logic, and unit tests
 Config/            # Shared signing configuration
@@ -28,21 +28,21 @@ Requires Xcode 26+ and [XcodeGen](https://github.com/yonaskolb/XcodeGen).
 
 1. Set your Apple team ID in `Config/Team.xcconfig`.
 2. `xcodegen generate`
-3. Open `Sift.xcodeproj`, choose the **Sift** or **Daymark** scheme, select your iPhone or simulator, and run.
+3. Open `Sift.xcodeproj`, choose the **Sift** or **DayInInk** scheme, select your iPhone or simulator, and run.
 
 For Blotter (Sift scheme), enable Settings → Apps → Messages → Text Message Filter → Blotter on your iPhone. Eligible texts from unknown senders that contain a keyword go silently to Junk. Only keyword rules, matching options, and setup status are saved; there is no Activity tab or match history. Upgrade cleanup deletes previously stored logs. See [Blotter's README](apps/Sift/README.md) for migration and device checks.
 
-For Day in Ink (Daymark scheme), six starter habits are included with no fabricated history. Customize them or create your own. Tap a habit’s + button to add progress, or its check-in button to change its pass/fail result. Open a habit to log a failure, adjust a daily total, edit history, or view 7-, 30-, and 90-day trends. Touch and hold a daily card for more actions.
+For Day in Ink (DayInInk scheme), six starter habits are included with no fabricated history. Customize them or create your own. Tap a habit’s + button to add progress, or its check-in button to change its pass/fail result. Open a habit to log a failure, adjust a daily total, edit history, or view 7-, 30-, and 90-day trends. Touch and hold a daily card for more actions.
 
 ## Checks
 
 ```sh
 make test-core             # Calendar, progress, check-in, streak, and storage tests
 make test-sift             # Keyword matching and deletion-only upgrade cleanup tests
-make build APP=Daymark    # Simulator build
+make build APP=DayInInk    # Simulator build
 make build APP=Sift       # Includes the SMS filter extension
-make test-ui              # Daymark’s end-to-end simulator tests
-make archive-check APP=Daymark # Unsigned Release packaging check; use APP=Sift for Sift
+make test-ui              # DayInInk’s end-to-end simulator tests
+make archive-check APP=DayInInk # Unsigned Release packaging check; use APP=Sift for Sift
 ```
 
 `make test-ui` uses the iPhone 18 Pro simulator by default. Set `TEST_DESTINATION='platform=iOS Simulator,name=…'` to use another installed iPhone simulator. UI tests use isolated storage and preserve the app’s ordinary data.

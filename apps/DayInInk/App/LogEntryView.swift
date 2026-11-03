@@ -24,7 +24,7 @@ struct LogEntryView: View {
                     HStack(spacing: 14) {
                         HabitIcon(habit: habit, size: 52)
                         VStack(alignment: .leading, spacing: 4) {
-                            Text(habit.name).font(DaymarkTheme.handwriting(24, relativeTo: .headline))
+                            Text(habit.name).font(DayInInkTheme.handwriting(24, relativeTo: .headline))
                             Text(date.formatted(date: .complete, time: .omitted))
                                 .font(.caption).foregroundStyle(.secondary)
                         }
@@ -34,7 +34,7 @@ struct LogEntryView: View {
                 if kind == .checkIn {
                     Section {
                         checkInButton(.passed, title: "Passed", subtitle: "I kept my promise", icon: "checkmark.circle.fill", color: habit.color.tint)
-                        checkInButton(.failed, title: "Failed", subtitle: "A fresh start tomorrow", icon: "xmark.circle.fill", color: DaymarkTheme.secondary)
+                        checkInButton(.failed, title: "Failed", subtitle: "A fresh start tomorrow", icon: "xmark.circle.fill", color: DayInInkTheme.secondary)
                     } header: { Text("How did it go?") }
                     footer: {
                         Text(habit.defaultPassed ? "Unrecorded pass/fail days count as passed."
@@ -92,7 +92,7 @@ struct LogEntryView: View {
             HStack(spacing: 14) {
                 Image(systemName: icon).font(.title2).foregroundStyle(color)
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(title).font(DaymarkTheme.handwriting(23, relativeTo: .headline)).foregroundStyle(DaymarkTheme.ink)
+                    Text(title).font(DayInInkTheme.handwriting(23, relativeTo: .headline)).foregroundStyle(DayInInkTheme.ink)
                     Text(subtitle).font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer()

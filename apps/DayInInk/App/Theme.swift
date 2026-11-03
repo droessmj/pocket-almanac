@@ -2,7 +2,7 @@ import SwiftUI
 import UIKit
 import HabitKit
 
-enum DaymarkTheme {
+enum DayInInkTheme {
     static let background = Color(hex: 0xF4F0E7)
     static let ink = Color(hex: 0x202F43)
     static let secondary = Color(hex: 0x69717C)
@@ -54,7 +54,7 @@ struct HabitIcon: View {
         Text(habit.emoji)
             .font(.system(size: size * 0.55))
             .frame(width: size, height: size)
-            .background(DaymarkTheme.paper, in: RoundedRectangle(cornerRadius: 8))
+            .background(DayInInkTheme.paper, in: RoundedRectangle(cornerRadius: 8))
             .overlay(RoundedRectangle(cornerRadius: 8).stroke(habit.color.tint.opacity(0.4), lineWidth: 1))
             .accessibilityHidden(true)
     }
@@ -62,7 +62,7 @@ struct HabitIcon: View {
 
 struct ProgressRing: View {
     var fraction: Double
-    var color: Color = DaymarkTheme.accent
+    var color: Color = DayInInkTheme.accent
     var lineWidth: CGFloat = 3
 
     var body: some View {
@@ -85,12 +85,12 @@ struct EmptyHabits: View {
     var body: some View {
         VStack(spacing: 14) {
             Image(systemName: "sun.horizon.fill")
-                .font(.system(size: 40, weight: .light)).foregroundStyle(DaymarkTheme.accent)
-            Text(title).font(DaymarkTheme.handwriting(24, relativeTo: .title3))
-            Text(message).font(DaymarkTheme.handwriting(18, relativeTo: .subheadline)).foregroundStyle(DaymarkTheme.secondary)
+                .font(.system(size: 40, weight: .light)).foregroundStyle(DayInInkTheme.accent)
+            Text(title).font(DayInInkTheme.handwriting(24, relativeTo: .title3))
+            Text(message).font(DayInInkTheme.handwriting(18, relativeTo: .subheadline)).foregroundStyle(DayInInkTheme.secondary)
                 .multilineTextAlignment(.center)
             if let actionTitle, let action {
-                Button(actionTitle, action: action).buttonStyle(.borderedProminent).tint(DaymarkTheme.accent)
+                Button(actionTitle, action: action).buttonStyle(.borderedProminent).tint(DayInInkTheme.accent)
             }
         }
         .frame(maxWidth: .infinity).padding(32)
@@ -100,14 +100,14 @@ struct EmptyHabits: View {
 /// A quiet writing surface; decoration stays out of the accessibility tree.
 struct PaperSurface: View {
     var body: some View {
-        DaymarkTheme.background.overlay {
+        DayInInkTheme.background.overlay {
             Canvas { context, size in
                 var rules = Path()
                 for y in stride(from: CGFloat(28), to: size.height, by: 28) {
                     rules.move(to: CGPoint(x: 0, y: y))
                     rules.addLine(to: CGPoint(x: size.width, y: y))
                 }
-                context.stroke(rules, with: .color(DaymarkTheme.ink.opacity(0.025)), lineWidth: 0.5)
+                context.stroke(rules, with: .color(DayInInkTheme.ink.opacity(0.025)), lineWidth: 0.5)
             }
             .accessibilityHidden(true).allowsHitTesting(false)
         }
@@ -116,11 +116,11 @@ struct PaperSurface: View {
 
 extension View {
     func paperCard() -> some View {
-        self.background(DaymarkTheme.paper, in: RoundedRectangle(cornerRadius: 8))
-            .overlay(RoundedRectangle(cornerRadius: 8).stroke(DaymarkTheme.rule, lineWidth: 0.75))
+        self.background(DayInInkTheme.paper, in: RoundedRectangle(cornerRadius: 8))
+            .overlay(RoundedRectangle(cornerRadius: 8).stroke(DayInInkTheme.rule, lineWidth: 0.75))
     }
 
-    func daymarkCard() -> some View {
+    func dayininkCard() -> some View {
         self.padding(20).paperCard()
     }
 }

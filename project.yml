@@ -79,13 +79,13 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.droessmj.blotter.filter
         TARGETED_DEVICE_FAMILY: "1"
 
-  Daymark:
+  DayInInk:
     type: application
     platform: iOS
     deploymentTarget: "17.0"
-    sources: [apps/Daymark/App, apps/Daymark/Assets.xcassets, apps/Daymark/PrivacyInfo.xcprivacy]
+    sources: [apps/DayInInk/App, apps/DayInInk/Assets.xcassets, apps/DayInInk/PrivacyInfo.xcprivacy]
     info:
-      path: apps/Daymark/Info.plist
+      path: apps/DayInInk/Info.plist
       properties:
         CFBundleDisplayName: Day in Ink
         CFBundleShortVersionString: $(MARKETING_VERSION)
@@ -97,32 +97,32 @@ targets:
         ITSAppUsesNonExemptEncryption: false
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.droessmj.daymark
+        PRODUCT_BUNDLE_IDENTIFIER: com.droessmj.dayinink
         TARGETED_DEVICE_FAMILY: "1"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
     dependencies:
       - package: HabitKit
-  DaymarkUITests:
+  DayInInkUITests:
     type: bundle.ui-testing
     platform: iOS
     deploymentTarget: "17.0"
-    sources: [apps/Daymark/UITests]
+    sources: [apps/DayInInk/UITests]
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.droessmj.daymark.uitests
+        PRODUCT_BUNDLE_IDENTIFIER: com.droessmj.dayinink.uitests
         TARGETED_DEVICE_FAMILY: "1"
         GENERATE_INFOPLIST_FILE: YES
     dependencies:
-      - target: Daymark
+      - target: DayInInk
 schemes:
   Sift:
     build:
       targets:
         Sift: all
-  Daymark:
+  DayInInk:
     build:
       targets:
-        Daymark: all
+        DayInInk: all
     test:
       targets:
-        - DaymarkUITests
+        - DayInInkUITests

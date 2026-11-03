@@ -2,14 +2,14 @@ import SwiftUI
 import HabitKit
 
 @main
-struct DaymarkApp: App {
+struct DayInInkApp: App {
     @State private var store = HabitStore()
 
     var body: some Scene {
         WindowGroup {
             RootView()
                 .environment(store)
-                .tint(DaymarkTheme.accent)
+                .tint(DayInInkTheme.accent)
                 .preferredColorScheme(.light)
         }
     }
@@ -66,7 +66,7 @@ struct RootView: View {
                 }
             }
         }
-        .foregroundStyle(DaymarkTheme.ink)
+        .foregroundStyle(DayInInkTheme.ink)
         .sheet(isPresented: $addingHabit) { HabitEditor() }
         .sheet(isPresented: $showDataTransfer) {
             NavigationStack {
@@ -89,9 +89,9 @@ struct RootView: View {
                         Image(systemName: item.icon).font(.system(size: 20, weight: .semibold))
                         Text(item.rawValue).font(.system(size: 10, weight: .semibold))
                     }
-                    .foregroundStyle(tab == item ? DaymarkTheme.accent : DaymarkTheme.secondary)
+                    .foregroundStyle(tab == item ? DayInInkTheme.accent : DayInInkTheme.secondary)
                     .frame(maxWidth: .infinity).frame(minHeight: 54)
-                    .background(tab == item ? DaymarkTheme.accent.opacity(0.08) : .clear,
+                    .background(tab == item ? DayInInkTheme.accent.opacity(0.08) : .clear,
                                 in: RoundedRectangle(cornerRadius: 8))
                 }
                 .accessibilityAddTraits(tab == item ? .isSelected : [])
@@ -100,7 +100,7 @@ struct RootView: View {
             Button { addingHabit = true } label: {
                 Image(systemName: "plus").font(.system(size: 21, weight: .semibold))
                     .foregroundStyle(.white).frame(width: 46, height: 46)
-                    .background(DaymarkTheme.accent, in: RoundedRectangle(cornerRadius: 8))
+                    .background(DayInInkTheme.accent, in: RoundedRectangle(cornerRadius: 8))
             }
             .accessibilityLabel("Add habit")
             .accessibilityIdentifier("add-habit")
@@ -111,7 +111,7 @@ struct RootView: View {
         .padding(.horizontal, 20).padding(.vertical, 10)
         .background { PaperSurface().ignoresSafeArea() }
         .overlay(alignment: .top) {
-            Rectangle().fill(DaymarkTheme.ink.opacity(0.1)).frame(height: 1)
+            Rectangle().fill(DayInInkTheme.ink.opacity(0.1)).frame(height: 1)
         }
     }
 }

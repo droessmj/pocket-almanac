@@ -14,8 +14,8 @@ struct HabitsView: View {
             VStack(alignment: .leading, spacing: 22) {
                 HStack {
                     VStack(alignment: .leading, spacing: 6) {
-                        Text("Your habits").font(DaymarkTheme.handwriting(32, relativeTo: .title))
-                        Text("Small promises. Lasting change.").font(DaymarkTheme.handwriting(18, relativeTo: .subheadline)).foregroundStyle(DaymarkTheme.secondary)
+                        Text("Your habits").font(DayInInkTheme.handwriting(32, relativeTo: .title))
+                        Text("Small promises. Lasting change.").font(DayInInkTheme.handwriting(18, relativeTo: .subheadline)).foregroundStyle(DayInInkTheme.secondary)
                     }
                     Spacer()
                     Button { showAbout = true } label: {
@@ -33,15 +33,15 @@ struct HabitsView: View {
                 Button(action: addHabit) {
                     Label("Add a new habit", systemImage: "plus")
                         .font(.subheadline.weight(.semibold)).frame(maxWidth: .infinity).padding(18)
-                        .background(DaymarkTheme.accent.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
-                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(DaymarkTheme.accent.opacity(0.25), style: StrokeStyle(lineWidth: 1, dash: [5])))
+                        .background(DayInInkTheme.accent.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
+                        .overlay(RoundedRectangle(cornerRadius: 8).stroke(DayInInkTheme.accent.opacity(0.25), style: StrokeStyle(lineWidth: 1, dash: [5])))
                 }
 
                 if !archived.isEmpty {
                     Text("ARCHIVED").font(.system(size: 11, weight: .semibold)).tracking(2)
-                        .foregroundStyle(DaymarkTheme.secondary).padding(.top, 8)
+                        .foregroundStyle(DayInInkTheme.secondary).padding(.top, 8)
                     Text("Your history is still here. Restore a habit whenever you’re ready.")
-                        .font(.caption).foregroundStyle(DaymarkTheme.secondary)
+                        .font(.caption).foregroundStyle(DayInInkTheme.secondary)
                     VStack(spacing: 12) { ForEach(archived) { habit in row(habit) } }
                 }
             }
@@ -57,9 +57,9 @@ struct HabitsView: View {
                 HStack(spacing: 12) {
                     HabitIcon(habit: habit)
                     VStack(alignment: .leading, spacing: 4) {
-                        Text(habit.name).font(DaymarkTheme.handwriting(20, relativeTo: .headline)).foregroundStyle(DaymarkTheme.ink)
+                        Text(habit.name).font(DayInInkTheme.handwriting(20, relativeTo: .headline)).foregroundStyle(DayInInkTheme.ink)
                         Text(habit.kind == .checkIn ? "Daily · pass / fail" : "Daily · \(amount(habit.target)) \(habit.unit)")
-                            .font(.caption).foregroundStyle(DaymarkTheme.secondary)
+                            .font(.caption).foregroundStyle(DayInInkTheme.secondary)
                     }
                     Spacer(minLength: 0)
                 }.contentShape(Rectangle())
@@ -68,7 +68,7 @@ struct HabitsView: View {
                 Button("Edit habit", systemImage: "pencil") { editing = habit }
                 Button(habit.isArchived ? "Restore habit" : "Archive habit", systemImage: "archivebox") { store.archiveHabit(habit) }
             } label: {
-                Image(systemName: "ellipsis").foregroundStyle(DaymarkTheme.secondary).frame(width: 44, height: 44)
+                Image(systemName: "ellipsis").foregroundStyle(DayInInkTheme.secondary).frame(width: 44, height: 44)
             }.accessibilityLabel("Options for \(habit.name)")
         }
         .padding(14).paperCard()
@@ -79,8 +79,8 @@ struct HabitsView: View {
             List {
                 Section {
                     VStack(spacing: 12) {
-                        Image(systemName: "pencil.and.outline").font(.system(size: 44, weight: .light)).foregroundStyle(DaymarkTheme.accent)
-                        Text("Day in Ink").font(DaymarkTheme.handwriting(36, relativeTo: .largeTitle))
+                        Image(systemName: "pencil.and.outline").font(.system(size: 44, weight: .light)).foregroundStyle(DayInInkTheme.accent)
+                        Text("Day in Ink").font(DayInInkTheme.handwriting(36, relativeTo: .largeTitle))
                         Text("A little better, every day.").foregroundStyle(.secondary)
                     }.frame(maxWidth: .infinity).padding(.vertical, 18)
                 }

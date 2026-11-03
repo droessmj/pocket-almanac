@@ -10,8 +10,8 @@ struct TrendsView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 22) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Little steps add up.").font(DaymarkTheme.handwriting(31, relativeTo: .title))
-                    Text("Your progress, one habit at a time.").font(DaymarkTheme.handwriting(18, relativeTo: .subheadline)).foregroundStyle(DaymarkTheme.secondary)
+                    Text("Little steps add up.").font(DayInInkTheme.handwriting(31, relativeTo: .title))
+                    Text("Your progress, one habit at a time.").font(DayInInkTheme.handwriting(18, relativeTo: .subheadline)).foregroundStyle(DayInInkTheme.secondary)
                 }.padding(.top, 18)
                 periodPicker(days: $days)
 
@@ -26,10 +26,10 @@ struct TrendsView: View {
                             HStack(spacing: 12) {
                                 HabitIcon(habit: habit, size: 42)
                                 VStack(alignment: .leading, spacing: 4) {
-                                    Text(habit.name).font(DaymarkTheme.handwriting(21, relativeTo: .headline))
-                                        .foregroundStyle(DaymarkTheme.ink)
+                                    Text(habit.name).font(DayInInkTheme.handwriting(21, relativeTo: .headline))
+                                        .foregroundStyle(DayInInkTheme.ink)
                                     Text("\(completed) of \(samples.count) \(samples.count == 1 ? "day" : "days") completed")
-                                        .font(.caption).foregroundStyle(DaymarkTheme.secondary)
+                                        .font(.caption).foregroundStyle(DayInInkTheme.secondary)
                                 }
                                 Spacer()
                                 Image(systemName: "arrow.up.right").font(.caption.weight(.semibold)).foregroundStyle(habit.color.tint)
@@ -41,13 +41,13 @@ struct TrendsView: View {
                                     .font(.caption.weight(.semibold)).foregroundStyle(habit.color.tint)
                                 Spacer()
                                 Label("\(store.archive.streak(for: habit)) day streak", systemImage: "sparkle")
-                                    .font(.caption).foregroundStyle(DaymarkTheme.secondary)
+                                    .font(.caption).foregroundStyle(DayInInkTheme.secondary)
                             }
-                        }.daymarkCard()
+                        }.dayininkCard()
                     }.buttonStyle(.plain)
                 }
                 Text("Trends include today and start on each habit’s creation date. Unrecorded pass/fail days use the daily default you choose for each habit. Numeric habits need recorded progress.")
-                    .font(.caption).foregroundStyle(DaymarkTheme.secondary).padding(.bottom, 8)
+                    .font(.caption).foregroundStyle(DayInInkTheme.secondary).padding(.bottom, 8)
             }.padding(.horizontal, 22).padding(.bottom, 18)
         }
     }
@@ -100,7 +100,7 @@ struct TrendChart: View {
                         PointMark(x: .value("Day", sample.date, unit: .day), y: .value("Daily goal %", 3))
                             .symbol(entry.checkIn == .failed ? .cross : .circle)
                             .symbolSize(compact ? 10 : 24)
-                            .foregroundStyle(entry.checkIn == .failed ? DaymarkTheme.secondary : color)
+                            .foregroundStyle(entry.checkIn == .failed ? DayInInkTheme.secondary : color)
                     }
                 }
             }
@@ -117,7 +117,7 @@ struct TrendChart: View {
         .chartYAxis {
             if !compact {
                 AxisMarks(position: .leading, values: [0, 50, 100]) { value in
-                    AxisGridLine().foregroundStyle(DaymarkTheme.background)
+                    AxisGridLine().foregroundStyle(DayInInkTheme.background)
                     AxisValueLabel { Text("\(value.as(Int.self) ?? 0)%").font(.system(size: 9)) }
                 }
             }
@@ -128,7 +128,7 @@ struct TrendChart: View {
         .overlay {
             if !hasEntries {
                 Text(compact ? "Your next chapter starts with a check-in" : "Check in to start your story")
-                    .font(.system(size: compact ? 10 : 12)).foregroundStyle(DaymarkTheme.secondary)
+                    .font(.system(size: compact ? 10 : 12)).foregroundStyle(DayInInkTheme.secondary)
                     .padding(8).background(.white.opacity(0.85), in: Capsule())
             }
         }

@@ -2,7 +2,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 import HabitKit
 
-struct DaymarkBackupDocument: FileDocument {
+struct DayInInkBackupDocument: FileDocument {
     static let readableContentTypes: [UTType] = [.json]
     let data: Data
 
@@ -23,7 +23,7 @@ struct DaymarkBackupDocument: FileDocument {
 
 struct DataTransferView: View {
     @Environment(HabitStore.self) private var store
-    @State private var exportDocument: DaymarkBackupDocument?
+    @State private var exportDocument: DayInInkBackupDocument?
     @State private var isExporting = false
     @State private var isImporting = false
     @State private var isConfirmingImport = false
@@ -58,7 +58,7 @@ struct DataTransferView: View {
             } header: {
                 Text("Import")
             } footer: {
-                Text("Choose a Day in Ink JSON backup. Backups from Daymark also work. You’ll review its contents before replacing all current habits and history. Export your current data first if you want to keep a copy.")
+                Text("Choose a Day in Ink JSON backup. You’ll review its contents before replacing all current habits and history. Export your current data first if you want to keep a copy.")
             }
 
             if let imported = pendingImport {
@@ -134,7 +134,7 @@ struct DataTransferView: View {
 
     private func exportBackup() {
         do {
-            exportDocument = try DaymarkBackupDocument(archive: store.archive)
+            exportDocument = try DayInInkBackupDocument(archive: store.archive)
             isExporting = true
         } catch {
             report(error, title: "Couldn’t export backup")

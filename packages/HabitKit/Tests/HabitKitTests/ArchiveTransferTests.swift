@@ -86,7 +86,7 @@ final class ArchiveTransferTests: XCTestCase {
     }
 
     func testInvalidRestorePreservesExistingFileBytes() throws {
-        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("DaymarkTransfer-\(UUID())")
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("DayInInkTransfer-\(UUID())")
         defer { try? FileManager.default.removeItem(at: directory) }
         let file = ArchiveFile(url: directory.appendingPathComponent("habits.json"))
         let original = backup()

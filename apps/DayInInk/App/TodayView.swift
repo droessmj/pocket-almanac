@@ -50,15 +50,15 @@ struct TodayView: View {
                     HStack {
                         VStack(alignment: .leading, spacing: 5) {
                             Text(isToday ? "Leave a mark today." : "A page in your progress.")
-                                .font(DaymarkTheme.handwriting(25, relativeTo: .title2))
+                                .font(DayInInkTheme.handwriting(25, relativeTo: .title2))
                             Text("\(completed) of \(eligible.count) habits completed")
-                                .font(.caption).foregroundStyle(DaymarkTheme.secondary)
+                                .font(.caption).foregroundStyle(DayInInkTheme.secondary)
                         }
                         Spacer()
                         Text("\(eligible.isEmpty ? 0 : Int(Double(completed) / Double(eligible.count) * 100))%")
                             .font(.system(size: 13, weight: .bold, design: .rounded))
-                            .foregroundStyle(DaymarkTheme.accent)
-                            .monospacedDigit().padding(10).background(DaymarkTheme.paper, in: RoundedRectangle(cornerRadius: 6))
+                            .foregroundStyle(DayInInkTheme.accent)
+                            .monospacedDigit().padding(10).background(DayInInkTheme.paper, in: RoundedRectangle(cornerRadius: 6))
                     }
                     .padding(.top, 24).padding(.bottom, 4)
 
@@ -76,11 +76,11 @@ struct TodayView: View {
                     }
 
                     HStack(spacing: 10) {
-                        Image(systemName: "sun.horizon").font(.title2).foregroundStyle(DaymarkTheme.accent)
+                        Image(systemName: "sun.horizon").font(.title2).foregroundStyle(DayInInkTheme.accent)
                         Text(completed == eligible.count && !eligible.isEmpty
                              ? "You showed up. That’s a day well spent."
                              : "Progress grows from showing up.")
-                            .font(DaymarkTheme.handwriting(18, relativeTo: .subheadline)).foregroundStyle(DaymarkTheme.secondary)
+                            .font(DayInInkTheme.handwriting(18, relativeTo: .subheadline)).foregroundStyle(DayInInkTheme.secondary)
                     }
                     .frame(maxWidth: .infinity).padding(.vertical, 16)
                 }
@@ -112,17 +112,17 @@ struct TodayView: View {
                     Text("DAY IN INK").tracking(3)
                 }
                 .font(.system(size: 10, weight: .bold))
-                .foregroundStyle(DaymarkTheme.accent)
+                .foregroundStyle(DayInInkTheme.accent)
                 Button { showCalendar = true } label: {
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
                         Text(isToday ? "Today" : selectedDate.formatted(.dateTime.month(.abbreviated).day()))
-                            .font(DaymarkTheme.handwriting(36, relativeTo: .largeTitle))
+                            .font(DayInInkTheme.handwriting(36, relativeTo: .largeTitle))
                         Image(systemName: "chevron.down").font(.system(size: 11, weight: .semibold))
-                    }.foregroundStyle(DaymarkTheme.ink)
+                    }.foregroundStyle(DayInInkTheme.ink)
                 }
                 .accessibilityLabel("Choose date, \(selectedDate.formatted(date: .complete, time: .omitted))")
                 Text(selectedDate.formatted(.dateTime.weekday(.wide).month(.wide).day()))
-                    .font(.caption).foregroundStyle(DaymarkTheme.secondary)
+                    .font(.caption).foregroundStyle(DayInInkTheme.secondary)
             }
             Spacer(minLength: 8)
             Menu {
@@ -135,9 +135,9 @@ struct TodayView: View {
                     Text(filter.rawValue)
                 }
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(DaymarkTheme.accent)
+                .foregroundStyle(DayInInkTheme.accent)
                 .padding(12)
-                .background(DaymarkTheme.accent.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
+                .background(DayInInkTheme.accent.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
             }
             .accessibilityLabel("Filter habits: \(filter.rawValue)")
         }
@@ -156,7 +156,7 @@ struct TodayView: View {
                         .font(.caption.weight(.medium))
                 } else {
                     Text("THIS WEEK").font(.system(size: 9, weight: .semibold))
-                        .tracking(2).foregroundStyle(DaymarkTheme.secondary)
+                        .tracking(2).foregroundStyle(DayInInkTheme.secondary)
                 }
                 Spacer()
                 Button { moveWeek(1) } label: {
@@ -165,7 +165,7 @@ struct TodayView: View {
                 .disabled(week.last! >= calendar.startOfDay(for: Date()))
                 .accessibilityLabel("Next week")
             }
-            .font(.system(size: 12, weight: .semibold)).foregroundStyle(DaymarkTheme.secondary)
+            .font(.system(size: 12, weight: .semibold)).foregroundStyle(DayInInkTheme.secondary)
 
             HStack(spacing: 2) {
                 ForEach(week, id: \.self) { date in
@@ -176,20 +176,20 @@ struct TodayView: View {
                         VStack(spacing: 12) {
                             Text(date.formatted(.dateTime.weekday(.narrow)))
                                 .font(.system(size: 12, weight: selected ? .semibold : .regular))
-                                .foregroundStyle(selected ? .white.opacity(0.8) : DaymarkTheme.secondary)
+                                .foregroundStyle(selected ? .white.opacity(0.8) : DayInInkTheme.secondary)
                             Text(date.formatted(.dateTime.day()))
                                 .font(.system(size: 17, weight: selected ? .bold : .medium, design: .serif))
-                                .foregroundStyle(selected ? .white : DaymarkTheme.ink)
+                                .foregroundStyle(selected ? .white : DayInInkTheme.ink)
                             Capsule()
-                                .fill(selected ? .white.opacity(0.25) : DaymarkTheme.accent.opacity(0.12))
+                                .fill(selected ? .white.opacity(0.25) : DayInInkTheme.accent.opacity(0.12))
                                 .frame(width: 24, height: 3)
                                 .overlay(alignment: .leading) {
-                                    Capsule().fill(selected ? .white : DaymarkTheme.accent)
+                                    Capsule().fill(selected ? .white : DayInInkTheme.accent)
                                         .frame(width: 24 * (dayHabits.isEmpty ? 0 : Double(done) / Double(dayHabits.count)), height: 3)
                                 }
                         }
                         .frame(maxWidth: .infinity).padding(.vertical, 12)
-                        .background(selected ? DaymarkTheme.accent : .clear, in: RoundedRectangle(cornerRadius: 12))
+                        .background(selected ? DayInInkTheme.accent : .clear, in: RoundedRectangle(cornerRadius: 12))
                         .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
@@ -251,12 +251,12 @@ struct HabitCard: View {
                         HabitIcon(habit: habit)
                         VStack(alignment: .leading, spacing: 6) {
                             Text(habit.name)
-                                .font(DaymarkTheme.handwriting(21, relativeTo: .headline))
-                                .foregroundStyle(DaymarkTheme.ink)
+                                .font(DayInInkTheme.handwriting(21, relativeTo: .headline))
+                                .foregroundStyle(DayInInkTheme.ink)
                                 .multilineTextAlignment(.leading)
                             Text(status)
                                 .font(.system(size: 11, weight: .medium))
-                                .foregroundStyle(DaymarkTheme.secondary)
+                                .foregroundStyle(DayInInkTheme.secondary)
                         }
                         Spacer(minLength: 0)
                     }
@@ -266,15 +266,15 @@ struct HabitCard: View {
                 VStack(alignment: .trailing, spacing: 6) {
                     if streak > 0 {
                         Label("\(streak) \(streak == 1 ? "day" : "days")", systemImage: "sparkle")
-                            .font(.system(size: 10, weight: .medium)).foregroundStyle(DaymarkTheme.secondary)
+                            .font(.system(size: 10, weight: .medium)).foregroundStyle(DayInInkTheme.secondary)
                     }
                     Button { withAnimation(.snappy) { store.quickLog(habit, on: date) } } label: {
                         Image(systemName: complete ? "checkmark" : (entry?.checkIn == .failed ? "xmark" : "plus"))
                             .font(.system(size: 15, weight: .semibold))
-                            .foregroundStyle(DaymarkTheme.accent)
+                            .foregroundStyle(DayInInkTheme.accent)
                             .frame(width: 30, height: 30)
-                            .background(DaymarkTheme.accent.opacity(complete ? 0.06 : 0), in: RoundedRectangle(cornerRadius: 5))
-                            .overlay(RoundedRectangle(cornerRadius: 5).stroke(DaymarkTheme.accent.opacity(0.65), lineWidth: 1))
+                            .background(DayInInkTheme.accent.opacity(complete ? 0.06 : 0), in: RoundedRectangle(cornerRadius: 5))
+                            .overlay(RoundedRectangle(cornerRadius: 5).stroke(DayInInkTheme.accent.opacity(0.65), lineWidth: 1))
                             .frame(width: 44, height: 44)
                             .contentShape(Rectangle())
                     }
@@ -288,8 +288,8 @@ struct HabitCard: View {
             .padding(.horizontal, 16).padding(.vertical, 16)
             GeometryReader { geometry in
                 ZStack(alignment: .leading) {
-                    DaymarkTheme.rule.opacity(0.6)
-                    DaymarkTheme.accent.frame(width: geometry.size.width * (entry?.fraction ?? 0))
+                    DayInInkTheme.rule.opacity(0.6)
+                    DayInInkTheme.accent.frame(width: geometry.size.width * (entry?.fraction ?? 0))
                 }
             }.frame(height: 3).padding(.horizontal, 16).padding(.bottom, 14)
         }

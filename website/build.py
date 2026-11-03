@@ -134,7 +134,7 @@ def render(config):
     for name in ("favicon.svg", "styles.css"):
         files["assets/" + name] = (SOURCE / "assets" / name).read_bytes()
     for app, icon in {
-        "day-in-ink": "apps/Daymark/Assets.xcassets/AppIcon.appiconset/icon-1024.png",
+        "day-in-ink": "apps/DayInInk/Assets.xcassets/AppIcon.appiconset/icon-1024.png",
         "blotter": "apps/Sift/App/Assets.xcassets/AppIcon.appiconset/icon-1024.png",
     }.items():
         files["assets/" + app + "-icon.png"] = (HERE.parent / icon).read_bytes()
