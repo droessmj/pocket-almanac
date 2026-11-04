@@ -1,16 +1,28 @@
 import SwiftUI
+import UIKit
 import HabitKit
 
 struct HabitDetailView: View {
     @Environment(HabitStore.self) private var store
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.calendar) private var calendar
+    @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let habitID: UUID
     @State private var days = 30
     @State private var editing = false
     @State private var confirmDelete = false
     @State private var logRequest: LogRequest?
     @State private var showHistory = false
-    @State private var historyDate = Date()
+    @State private var historyDay = HabitDay(Date())
+    @State private var errorMessage: String?
+    @State private var saving = false
+    @State private var today = HabitDay(Date())
+
+    private var historyDate: Date {
+        get { historyDay.date(calendar: calendar) ?? calendar.startOfDay(for: Date()) }
+        nonmutating set { historyDay = HabitDay(newValue, calendar: calendar) }
+    }
 
     private var habit: Habit? { store.archive.habits.first { $0.id == habitID } }
 
@@ -26,7 +38,9 @@ struct HabitDetailView: View {
                 Menu {
                     Button("Edit habit", systemImage: "pencil") { editing = true }
                     if let habit {
-                        Button(habit.isArchived ? "Restore habit" : "Archive habit", systemImage: "archivebox") { store.archiveHabit(habit) }
+                        Button(habit.isArchived ? "Restore habit" : "Archive habit", systemImage: "archivebox") {
+                            mutate { try await store.archiveHabit(habit) }
+                        }.disabled(saving)
                         Button("Delete habit", systemImage: "trash", role: .destructive) { confirmDelete = true }
                     }
                 } label: { Image(systemName: "ellipsis.circle").frame(width: 44, height: 44) }
@@ -34,7 +48,7 @@ struct HabitDetailView: View {
             }
         }
         .sheet(isPresented: $editing) { if let habit { HabitEditor(habit: habit) } }
-        .sheet(item: $logRequest) { request in LogEntryView(habit: request.habit, date: request.date) }
+        .sheet(item: $logRequest) { request in LogEntryView(habit: request.habit, day: request.day) }
         .sheet(isPresented: $showHistory, onDismiss: {
             // Present after the date picker is dismissed so the sheets don't compete.
             if let habit, historySelected { logRequest = LogRequest(habit: habit, date: historyDate) }
@@ -42,11 +56,11 @@ struct HabitDetailView: View {
         }) {
             if let habit {
                 let now = Date()
-                let historyRange = habit.historyDateRange(through: now)
+                let historyRange = habit.historyDateRange(through: now, calendar: calendar)
                 NavigationStack {
                     Group {
                         if let historyRange {
-                            DatePicker("Choose a day", selection: $historyDate,
+                            DatePicker("Choose a day", selection: Binding(get: { historyDate }, set: { historyDate = $0 }),
                                        in: historyRange, displayedComponents: .date)
                                 .datePickerStyle(.graphical).padding()
                         } else {
@@ -68,15 +82,38 @@ struct HabitDetailView: View {
         }
         .confirmationDialog("Permanently delete this habit and all its check-ins?", isPresented: $confirmDelete, titleVisibility: .visible) {
             Button("Delete habit", role: .destructive) {
-                if let habit, store.delete(habit) { dismiss() }
+                if let habit {
+                    mutate {
+                        try await store.delete(habit)
+                        dismiss()
+                    }
+                }
             }
+        }
+        .mutationError($errorMessage)
+        .onChange(of: scenePhase) { _, phase in if phase == .active { today = HabitDay(Date(), calendar: calendar) } }
+        .onChange(of: calendar) { _, _ in today = HabitDay(Date(), calendar: calendar) }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.significantTimeChangeNotification)) { _ in
+            today = HabitDay(Date(), calendar: calendar)
         }
     }
 
     @State private var historySelected = false
 
+    private func mutate(_ operation: @escaping @MainActor () async throws -> Void) {
+        guard !saving else { return }
+        saving = true
+        Task {
+            defer { saving = false }
+            do { try await operation() }
+            catch { errorMessage = error.localizedDescription }
+        }
+    }
+
     private func content(_ habit: Habit) -> some View {
-        let samples = store.archive.samples(for: habit, days: days)
+        let samples = store.archive.samples(for: habit, days: days, calendar: calendar)
+        let history = Array(samples.reversed().prefix(14))
+        let canLogToday = habit.startDay <= today
         let completed = samples.filter { $0.entry?.isComplete == true }.count
         let logged = samples.filter { $0.entry != nil && !$0.isDefault }.count
         let failed = samples.filter { $0.entry?.checkIn == .failed }.count
@@ -84,19 +121,22 @@ struct HabitDetailView: View {
 
         return ScrollView {
             VStack(alignment: .leading, spacing: 22) {
-                HStack(spacing: 16) {
+                let headerLayout = dynamicTypeSize.isAccessibilitySize
+                    ? AnyLayout(VStackLayout(alignment: .leading, spacing: 16))
+                    : AnyLayout(HStackLayout(spacing: 16))
+                headerLayout {
                     HabitIcon(habit: habit, size: 68)
                     VStack(alignment: .leading, spacing: 6) {
                         Text(habit.name).font(DayInInkTheme.handwriting(27, relativeTo: .title2))
                         Text(habit.kind == .checkIn ? "One promise, every day" : "Daily goal · \(amount(habit.target)) \(habit.unit)")
                             .font(.subheadline).foregroundStyle(DayInInkTheme.secondary)
                         if habit.isArchived {
-                            Text("Archived · history kept").font(.caption).foregroundStyle(habit.color.tint)
+                            Text("Archived · history kept").font(.caption).foregroundStyle(habit.color.textColor)
                         }
                     }
                 }.padding(.top, 18)
 
-                Button { logRequest = LogRequest(habit: habit, date: Date()) } label: {
+                Button { logRequest = LogRequest(habit: habit, date: calendar.startOfDay(for: Date())) } label: {
                     HStack {
                         Image(systemName: "plus.circle.fill")
                         Text("Check in for today").fontWeight(.semibold)
@@ -106,30 +146,35 @@ struct HabitDetailView: View {
                     .foregroundStyle(.white).padding(18)
                     .background(DayInInkTheme.accent, in: RoundedRectangle(cornerRadius: 8))
                 }
+                .disabled(!canLogToday)
+                .opacity(canLogToday ? 1 : 0.6)
+                if !canLogToday {
+                    Text("This habit starts on \(habit.startDate(calendar: calendar).map { habitDateLabel($0, format: Date.FormatStyle(date: .abbreviated, time: .omitted)) } ?? "a future day"). Today’s check-in will be available on its start day. Check your iPhone’s date and time if this is unexpected.")
+                        .font(.caption).foregroundStyle(DayInInkTheme.secondary)
+                        .accessibilityIdentifier("future-start-explanation")
+                }
 
                 periodPicker(days: $days)
 
-                HStack(spacing: 12) {
-                    metric("\(completionPercent(samples))%", label: "Completion", color: habit.color.tint)
-                    metric("\(store.archive.streak(for: habit))", label: "Current streak", color: habit.color.tint)
-                    metric("\(logged)", label: "Days logged", color: habit.color.tint)
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), alignment: .leading),
+                                         count: dynamicTypeSize.isAccessibilitySize ? 1 : 3), spacing: 12) {
+                    metric("\(completionPercent(samples))%", label: "Completion", color: habit.color.textColor)
+                    metric("\(store.archive.streak(for: habit, calendar: calendar))", label: "Current streak", color: habit.color.textColor)
+                    metric("\(logged)", label: "Days logged", color: habit.color.textColor)
                 }
 
                 VStack(alignment: .leading, spacing: 20) {
-                    HStack {
+                    VStack(alignment: .leading, spacing: 8) {
                         Text("Your daily rhythm").font(DayInInkTheme.handwriting(23, relativeTo: .headline))
-                        Spacer()
-                        Text("\(completed) \(completed == 1 ? "win" : "wins")").font(.caption.weight(.medium)).foregroundStyle(habit.color.tint)
+                        Text("\(completed) \(completed == 1 ? "win" : "wins")").font(.caption.weight(.medium)).foregroundStyle(habit.color.textColor)
                     }
                     TrendChart(samples: samples, color: habit.color.tint).frame(height: 185)
-                    HStack(spacing: 5) {
-                        Circle().fill(habit.color.tint).frame(width: 6, height: 6)
-                        Text(hasProgress ? "% of that day’s goal · × = fail" : "Pass = 100%  ·  × = fail")
-                            .font(.system(size: 10)).foregroundStyle(DayInInkTheme.secondary)
-                        Spacer()
+                    VStack(alignment: .leading, spacing: 5) {
+                        Label(hasProgress ? "% of that day’s goal · × = fail" : "Pass = 100% · × = fail", systemImage: "circle.fill")
+                            .font(.caption).foregroundStyle(DayInInkTheme.secondary)
                         Text(habit.kind == .checkIn
                              ? (habit.defaultPassed ? "Passed unless marked failed" : "Failed unless marked passed")
-                             : "Gaps = unrecorded").font(.system(size: 10)).foregroundStyle(DayInInkTheme.secondary)
+                             : "Gaps = unrecorded").font(.caption).foregroundStyle(DayInInkTheme.secondary)
                     }
                 }.dayininkCard()
 
@@ -139,32 +184,34 @@ struct HabitDetailView: View {
                          ? "\(completed) passed · \(failed) failed · \(samples.filter(\.isDefault).count) \(habit.defaultPassed ? "passed" : "failed") by default"
                          : "\(completed) completed · \(failed) failed · \(samples.filter { $0.entry == nil }.count) unrecorded")
                         .font(.caption).foregroundStyle(DayInInkTheme.secondary)
-                    Text("Based on \(samples.count) \(samples.count == 1 ? "day" : "days") since \(max(habit.createdAt, samples.first?.date ?? habit.createdAt).formatted(date: .abbreviated, time: .omitted)). Today is included and can still be in progress.")
+                    Text("Based on \(samples.count) \(samples.count == 1 ? "day" : "days") since \(habitDateLabel(samples.first?.date ?? habit.startDate(calendar: calendar) ?? Date(), format: Date.FormatStyle(date: .abbreviated, time: .omitted))). Today is included and can still be in progress.")
                         .font(.caption).foregroundStyle(DayInInkTheme.secondary)
                 }.dayininkCard()
 
-                HStack {
+                VStack(alignment: .leading, spacing: 8) {
                     Text("Daily history").font(DayInInkTheme.handwriting(25, relativeTo: .title3))
-                    Spacer()
-                    Button("Choose date") { historyDate = Date(); showHistory = true }.font(.caption.weight(.medium))
+                    Button("Choose date") { historyDate = calendar.startOfDay(for: Date()); showHistory = true }.font(.caption.weight(.medium))
                 }
                 VStack(spacing: 0) {
-                    ForEach(Array(samples.reversed().prefix(14))) { sample in
+                    ForEach(history) { sample in
                         Button { logRequest = LogRequest(habit: habit, date: sample.date) } label: {
-                            HStack(spacing: 12) {
+                            let rowLayout = dynamicTypeSize.isAccessibilitySize
+                                ? AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
+                                : AnyLayout(HStackLayout(spacing: 12))
+                            rowLayout {
                                 ZStack {
                                     Circle().fill(historyColor(sample, habit: habit).opacity(0.1)).frame(width: 30, height: 30)
                                     Image(systemName: historyIcon(sample)).font(.system(size: 11, weight: .bold))
                                         .foregroundStyle(historyColor(sample, habit: habit))
                                 }
-                                Text(Calendar.current.isDateInToday(sample.date) ? "Today" : sample.date.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day()))
+                                Text(calendar.isDateInToday(sample.date) ? "Today" : habitDateLabel(sample.date, format: .dateTime.weekday(.abbreviated).month(.abbreviated).day()))
                                     .font(.subheadline).foregroundStyle(DayInInkTheme.ink)
                                 Spacer()
                                 Text(historyLabel(sample)).font(.caption).foregroundStyle(DayInInkTheme.secondary)
                                 Image(systemName: "chevron.right").font(.system(size: 9, weight: .semibold)).foregroundStyle(DayInInkTheme.secondary)
                             }.padding(.vertical, 12).contentShape(Rectangle())
                         }.buttonStyle(.plain)
-                        if sample.date != samples.reversed().prefix(14).last?.date { Divider().opacity(0.4) }
+                        if sample.id != history.last?.id { Divider().opacity(0.4) }
                     }
                 }
                 .padding(.horizontal, 16).paperCard()
@@ -178,7 +225,7 @@ struct HabitDetailView: View {
     private func metric(_ value: String, label: String, color: Color) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(value).font(.system(.title2, design: .rounded).monospacedDigit()).foregroundStyle(color)
-            Text(label).font(.system(size: 10, weight: .medium)).foregroundStyle(DayInInkTheme.secondary)
+            Text(label).font(.caption.weight(.medium)).foregroundStyle(DayInInkTheme.secondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading).padding(14)
         .paperCard()

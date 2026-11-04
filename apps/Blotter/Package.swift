@@ -3,11 +3,11 @@ import PackageDescription
 
 // Test the shared source compiled into the app and filter without signing or SMS.
 let package = Package(
-    name: "SiftCore",
+    name: "BlotterCore",
     platforms: [.macOS(.v14)],
     targets: [
-        .target(name: "SiftCore", path: "Shared", exclude: ["PrivacyInfo.xcprivacy"]),
-        .testTarget(name: "SiftCoreTests", dependencies: ["SiftCore"], path: "Tests")
+        .target(name: "BlotterCore", path: "Shared", exclude: ["PrivacyInfo.xcprivacy"]),
+        .testTarget(name: "BlotterCoreTests", dependencies: ["BlotterCore"], path: "Tests")
     ],
     swiftLanguageModes: [.v5]
 )

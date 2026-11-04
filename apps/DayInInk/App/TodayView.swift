@@ -9,17 +9,22 @@ private enum HabitFilter: String, CaseIterable {
 struct TodayView: View {
     @Environment(HabitStore.self) private var store
     @Environment(\.scenePhase) private var scenePhase
-    @State private var lastToday = Calendar.current.startOfDay(for: Date())
-    @State private var selectedDate = Calendar.current.startOfDay(for: Date())
+    @Environment(\.calendar) private var calendar
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @State private var lastToday = HabitDay(Date())
+    @State private var selectedDay = HabitDay(Date())
     @State private var filter = HabitFilter.all
     @State private var showCalendar = false
     @State private var logRequest: LogRequest?
     let addHabit: () -> Void
 
-    private let calendar = Calendar.current
-    private var isToday: Bool { calendar.isDateInToday(selectedDate) }
+    private var selectedDate: Date {
+        get { selectedDay.date(calendar: calendar) ?? calendar.startOfDay(for: Date()) }
+        nonmutating set { selectedDay = HabitDay(newValue, calendar: calendar) }
+    }
+    private var isToday: Bool { selectedDay == HabitDay(Date(), calendar: calendar) }
     private var eligible: [Habit] {
-        store.activeHabits.filter { calendar.startOfDay(for: $0.createdAt) <= selectedDate }
+        store.activeHabits.filter { $0.startDay <= selectedDay }
     }
     private var completed: Int {
         eligible.filter { store.archive.isComplete($0, on: selectedDate) }.count
@@ -42,12 +47,12 @@ struct TodayView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            header
-            weekStrip
-            ScrollView {
-                VStack(alignment: .leading, spacing: 16) {
-                    HStack {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 16) {
+                header
+                weekStrip
+                LazyVStack(alignment: .leading, spacing: 16) {
+                    HStack(alignment: .top) {
                         VStack(alignment: .leading, spacing: 5) {
                             Text(isToday ? "Leave a mark today." : "A page in your progress.")
                                 .font(DayInInkTheme.handwriting(25, relativeTo: .title2))
@@ -56,11 +61,11 @@ struct TodayView: View {
                         }
                         Spacer()
                         Text("\(eligible.isEmpty ? 0 : Int(Double(completed) / Double(eligible.count) * 100))%")
-                            .font(.system(size: 13, weight: .bold, design: .rounded))
+                            .font(.subheadline.bold())
                             .foregroundStyle(DayInInkTheme.accent)
                             .monospacedDigit().padding(10).background(DayInInkTheme.paper, in: RoundedRectangle(cornerRadius: 6))
                     }
-                    .padding(.top, 24).padding(.bottom, 4)
+                    .padding(.top, 8).padding(.bottom, 4)
 
                     if visible.isEmpty {
                         EmptyHabits(
@@ -86,42 +91,47 @@ struct TodayView: View {
                 }
                 .padding(.horizontal, 20).padding(.bottom, 14)
             }
-            .scrollIndicators(.hidden)
         }
+        .scrollIndicators(.hidden)
         .sensoryFeedback(.success, trigger: completed)
-        .sheet(item: $logRequest) { request in LogEntryView(habit: request.habit, date: request.date) }
+        .sheet(item: $logRequest) { request in LogEntryView(habit: request.habit, day: request.day) }
         .sheet(isPresented: $showCalendar) {
             NavigationStack {
-                DatePicker("Review a day", selection: $selectedDate, in: ...Date(), displayedComponents: .date)
+                DatePicker("Review a day", selection: Binding(get: { selectedDate }, set: { selectedDate = $0 }),
+                           in: ...calendar.startOfDay(for: Date()), displayedComponents: .date)
                     .datePickerStyle(.graphical).padding()
                     .navigationTitle("Your calendar").navigationBarTitleDisplayMode(.inline)
                     .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { showCalendar = false } } }
             }
             .presentationDetents([.medium, .large])
         }
-        .onChange(of: selectedDate) { _, date in selectedDate = calendar.startOfDay(for: date) }
+        .onChange(of: calendar) { _, _ in refreshToday() }
         .onChange(of: scenePhase) { _, phase in if phase == .active { refreshToday() } }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.significantTimeChangeNotification)) { _ in refreshToday() }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name.NSSystemTimeZoneDidChange)) { _ in refreshToday() }
     }
 
     private var header: some View {
-        HStack(alignment: .center) {
+        let layout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 16))
+            : AnyLayout(HStackLayout(alignment: .center))
+        return layout {
             VStack(alignment: .leading, spacing: 5) {
                 HStack(spacing: 7) {
                     Image(systemName: "sun.horizon.fill")
                     Text("DAY IN INK").tracking(3)
                 }
-                .font(.system(size: 10, weight: .bold))
+                .font(.caption2.bold())
                 .foregroundStyle(DayInInkTheme.accent)
                 Button { showCalendar = true } label: {
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Text(isToday ? "Today" : selectedDate.formatted(.dateTime.month(.abbreviated).day()))
+                        Text(isToday ? "Today" : habitDateLabel(selectedDate, format: .dateTime.month(.abbreviated).day()))
                             .font(DayInInkTheme.handwriting(36, relativeTo: .largeTitle))
-                        Image(systemName: "chevron.down").font(.system(size: 11, weight: .semibold))
+                        Image(systemName: "chevron.down").font(.caption.weight(.semibold))
                     }.foregroundStyle(DayInInkTheme.ink)
                 }
-                .accessibilityLabel("Choose date, \(selectedDate.formatted(date: .complete, time: .omitted))")
-                Text(selectedDate.formatted(.dateTime.weekday(.wide).month(.wide).day()))
+                .accessibilityLabel("Choose date, \(habitDateLabel(selectedDate, format: Date.FormatStyle(date: .complete, time: .omitted)))")
+                Text(habitDateLabel(selectedDate, format: .dateTime.weekday(.wide).month(.wide).day()))
                     .font(.caption).foregroundStyle(DayInInkTheme.secondary)
             }
             Spacer(minLength: 8)
@@ -148,37 +158,38 @@ struct TodayView: View {
         VStack(spacing: 10) {
             HStack {
                 Button { moveWeek(-1) } label: {
-                    Image(systemName: "chevron.left").frame(width: 36, height: 28)
+                    Image(systemName: "chevron.left").frame(minWidth: 44, minHeight: 44)
                 }.accessibilityLabel("Previous week")
                 Spacer()
                 if !isToday {
                     Button("Back to today") { selectedDate = calendar.startOfDay(for: Date()) }
                         .font(.caption.weight(.medium))
                 } else {
-                    Text("THIS WEEK").font(.system(size: 9, weight: .semibold))
+                    Text("THIS WEEK").font(.caption2.weight(.semibold))
                         .tracking(2).foregroundStyle(DayInInkTheme.secondary)
                 }
                 Spacer()
                 Button { moveWeek(1) } label: {
-                    Image(systemName: "chevron.right").frame(width: 36, height: 28)
+                    Image(systemName: "chevron.right").frame(minWidth: 44, minHeight: 44)
                 }
                 .disabled(week.last! >= calendar.startOfDay(for: Date()))
                 .accessibilityLabel("Next week")
             }
-            .font(.system(size: 12, weight: .semibold)).foregroundStyle(DayInInkTheme.secondary)
+            .font(.caption.weight(.semibold)).foregroundStyle(DayInInkTheme.secondary)
 
-            HStack(spacing: 2) {
+            let columns = dynamicTypeSize.isAccessibilitySize ? 3 : 7
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 2), count: columns), spacing: 4) {
                 ForEach(week, id: \.self) { date in
                     let selected = calendar.isDate(date, inSameDayAs: selectedDate)
-                    let dayHabits = store.activeHabits.filter { calendar.startOfDay(for: $0.createdAt) <= date }
+                    let dayHabits = store.activeHabits.filter { $0.startDay <= HabitDay(date, calendar: calendar) }
                     let done = dayHabits.filter { store.archive.isComplete($0, on: date) }.count
                     Button { selectedDate = date } label: {
                         VStack(spacing: 12) {
-                            Text(date.formatted(.dateTime.weekday(.narrow)))
-                                .font(.system(size: 12, weight: selected ? .semibold : .regular))
-                                .foregroundStyle(selected ? .white.opacity(0.8) : DayInInkTheme.secondary)
-                            Text(date.formatted(.dateTime.day()))
-                                .font(.system(size: 17, weight: selected ? .bold : .medium, design: .serif))
+                            Text(habitDateLabel(date, format: .dateTime.weekday(.narrow)))
+                                .font(.caption.weight(selected ? .semibold : .regular))
+                                .foregroundStyle(selected ? .white : DayInInkTheme.secondary)
+                            Text(habitDateLabel(date, format: .dateTime.day()))
+                                .font(.system(.body, design: .serif).weight(selected ? .bold : .medium))
                                 .foregroundStyle(selected ? .white : DayInInkTheme.ink)
                             Capsule()
                                 .fill(selected ? .white.opacity(0.25) : DayInInkTheme.accent.opacity(0.12))
@@ -195,7 +206,7 @@ struct TodayView: View {
                     .buttonStyle(.plain)
                     .disabled(date > calendar.startOfDay(for: Date()))
                     .opacity(date > calendar.startOfDay(for: Date()) ? 0.35 : 1)
-                    .accessibilityLabel("\(date.formatted(date: .complete, time: .omitted)), \(done) completed")
+                    .accessibilityLabel("\(habitDateLabel(date, format: Date.FormatStyle(date: .complete, time: .omitted))), \(done) completed")
                     .accessibilityAddTraits(selected ? .isSelected : [])
                 }
             }
@@ -208,8 +219,8 @@ struct TodayView: View {
     }
 
     private func refreshToday() {
-        let today = calendar.startOfDay(for: Date())
-        if calendar.isDate(selectedDate, inSameDayAs: lastToday) { selectedDate = today }
+        let today = HabitDay(Date(), calendar: calendar)
+        if selectedDay == lastToday || selectedDay > today || selectedDay.date(calendar: calendar) == nil { selectedDay = today }
         lastToday = today
     }
 
@@ -229,11 +240,18 @@ struct TodayView: View {
 struct LogRequest: Identifiable {
     let id = UUID()
     let habit: Habit
-    let date: Date
+    let day: HabitDay
+
+    init(habit: Habit, date: Date) {
+        self.habit = habit
+        self.day = HabitDay(date)
+    }
 }
 
 struct HabitCard: View {
     @Environment(HabitStore.self) private var store
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @State private var errorMessage: String?
     let habit: Habit
     let date: Date
     let edit: () -> Void
@@ -245,7 +263,10 @@ struct HabitCard: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 12) {
+            let layout = dynamicTypeSize.isAccessibilitySize
+                ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
+                : AnyLayout(HStackLayout(spacing: 12))
+            layout {
                 NavigationLink(value: habit) {
                     HStack(spacing: 12) {
                         HabitIcon(habit: habit)
@@ -254,9 +275,14 @@ struct HabitCard: View {
                                 .font(DayInInkTheme.handwriting(21, relativeTo: .headline))
                                 .foregroundStyle(DayInInkTheme.ink)
                                 .multilineTextAlignment(.leading)
+                                .lineLimit(nil).fixedSize(horizontal: false, vertical: true)
                             Text(status)
-                                .font(.system(size: 11, weight: .medium))
+                                .font(.caption.weight(.medium))
                                 .foregroundStyle(DayInInkTheme.secondary)
+                                .lineLimit(nil).fixedSize(horizontal: false, vertical: true)
+                                .accessibilityLabel(kind == .progress
+                                    ? "\(spokenAmount(entry?.value ?? 0)) of \(spokenAmount(entry?.target ?? habit.target)) \(entry?.unit ?? habit.unit)"
+                                    : status)
                         }
                         Spacer(minLength: 0)
                     }
@@ -266,9 +292,9 @@ struct HabitCard: View {
                 VStack(alignment: .trailing, spacing: 6) {
                     if streak > 0 {
                         Label("\(streak) \(streak == 1 ? "day" : "days")", systemImage: "sparkle")
-                            .font(.system(size: 10, weight: .medium)).foregroundStyle(DayInInkTheme.secondary)
+                            .font(.caption2.weight(.medium)).foregroundStyle(DayInInkTheme.secondary)
                     }
-                    Button { withAnimation(.snappy) { store.quickLog(habit, on: date) } } label: {
+                    Button { mutate { try await store.quickLog(habit, on: date) } } label: {
                         Image(systemName: complete ? "checkmark" : (entry?.checkIn == .failed ? "xmark" : "plus"))
                             .font(.system(size: 15, weight: .semibold))
                             .foregroundStyle(DayInInkTheme.accent)
@@ -282,7 +308,7 @@ struct HabitCard: View {
                     .accessibilityIdentifier("quick-\(habit.name)")
                     .accessibilityLabel(kind == .checkIn
                                         ? "\(complete ? "Mark failed" : "Mark passed") for \(habit.name)"
-                                        : "Add \(amount(habit.step)) \(entry?.unit ?? habit.unit) to \(habit.name)")
+                                        : "Add \(spokenAmount(habit.step)) \(entry?.unit ?? habit.unit) to \(habit.name)")
                 }
             }
             .padding(.horizontal, 16).padding(.vertical, 16)
@@ -301,14 +327,22 @@ struct HabitCard: View {
         .contextMenu {
             Button("Edit this day", systemImage: "pencil", action: edit)
             if kind == .checkIn {
-                Button("Mark passed", systemImage: "checkmark") { store.record(habit, on: date, checkIn: .passed) }
-                Button("Mark failed", systemImage: "xmark") { store.record(habit, on: date, checkIn: .failed) }
+                Button("Mark passed", systemImage: "checkmark") { mutate { try await store.record(habit, on: date, checkIn: .passed) } }
+                Button("Mark failed", systemImage: "xmark") { mutate { try await store.record(habit, on: date, checkIn: .failed) } }
             }
             if entry != nil {
-                Button("Clear this day", systemImage: "arrow.uturn.backward") { store.clear(habit, on: date) }
+                Button("Clear this day", systemImage: "arrow.uturn.backward") { mutate { try await store.clear(habit, on: date) } }
             }
         }
         .accessibilityAction(named: "Edit this day", edit)
+        .mutationError($errorMessage)
+    }
+
+    private func mutate(_ operation: @escaping @MainActor () async throws -> Void) {
+        Task {
+            do { try await operation() }
+            catch { errorMessage = error.localizedDescription }
+        }
     }
 
     private var status: String {

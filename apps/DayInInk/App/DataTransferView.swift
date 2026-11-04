@@ -6,8 +6,8 @@ struct DayInInkBackupDocument: FileDocument {
     static let readableContentTypes: [UTType] = [.json]
     let data: Data
 
-    init(archive: HabitArchive) throws {
-        data = try ArchiveFile.encode(archive)
+    init(data: Data) {
+        self.data = data
     }
 
     init(configuration: ReadConfiguration) throws {
@@ -29,8 +29,7 @@ struct DataTransferView: View {
     @State private var isConfirmingImport = false
     @State private var pendingImport: HabitArchive?
     @State private var notice: TransferNotice?
-    @State private var legacyBackup: LegacyBackupRequest?
-    @State private var readingBackup = false
+    @State private var working = false
 
     private var backupFilename: String {
         let formatter = ISO8601DateFormatter()
@@ -42,7 +41,7 @@ struct DataTransferView: View {
         List {
             Section {
                 Button("Export backup", systemImage: "square.and.arrow.up", action: exportBackup)
-                    .disabled(!store.ready)
+                    .disabled(!store.ready || working)
                     .accessibilityIdentifier("export-backup")
             } header: {
                 Text("Export")
@@ -53,8 +52,8 @@ struct DataTransferView: View {
             Section {
                 Button("Import backup", systemImage: "square.and.arrow.down") { isImporting = true }
                     .accessibilityIdentifier("import-backup")
-                    .disabled(readingBackup)
-                if readingBackup { ProgressView("Reading backup…") }
+                    .disabled(working)
+                if working { ProgressView("Working with your backup…") }
             } header: {
                 Text("Import")
             } footer: {
@@ -66,6 +65,7 @@ struct DataTransferView: View {
                     Text("\(imported.habits.count) habits, including \(imported.habits.filter(\.isArchived).count) archived, and \(imported.entries.count) recorded check-ins.")
                     Button("Replace current data", role: .destructive) { isConfirmingImport = true }
                         .accessibilityIdentifier("confirm-import")
+                        .disabled(working)
                     Button("Cancel import") { pendingImport = nil }
                 }
             }
@@ -103,29 +103,21 @@ struct DataTransferView: View {
         .alert(item: $notice) { notice in
             Alert(title: Text(notice.title), message: Text(notice.message), dismissButton: .default(Text("OK")))
         }
-        .sheet(item: $legacyBackup) { request in
-            LegacyCalendarPicker(title: "Import an older backup", onChoose: { calendar in
-                legacyBackup = nil
-                importBackup(from: request.url, legacyCalendar: calendar)
-            }, onCancel: { legacyBackup = nil })
-        }
     }
 
-    private func importBackup(from url: URL, legacyCalendar: Calendar? = nil) {
-        readingBackup = true
+    private func importBackup(from url: URL) {
+        working = true
         pendingImport = nil
         Task {
             let accessed = url.startAccessingSecurityScopedResource()
             defer {
                 if accessed { url.stopAccessingSecurityScopedResource() }
-                readingBackup = false
+                working = false
             }
             do {
                 pendingImport = try await Task.detached(priority: .userInitiated) {
-                    try ArchiveFile.read(from: url, legacyCalendar: legacyCalendar)
+                    try ArchiveFile.read(from: url)
                 }.value
-            } catch ArchiveValidationError.legacyCalendarRequired {
-                legacyBackup = LegacyBackupRequest(url: url)
             } catch {
                 report(error, title: "Couldn’t import backup", unchanged: true)
             }
@@ -133,21 +125,33 @@ struct DataTransferView: View {
     }
 
     private func exportBackup() {
-        do {
-            exportDocument = try DayInInkBackupDocument(archive: store.archive)
-            isExporting = true
-        } catch {
-            report(error, title: "Couldn’t export backup")
+        working = true
+        Task {
+            defer { working = false }
+            do {
+                let snapshot = try await store.snapshot()
+                let data = try await Task.detached(priority: .userInitiated) {
+                    try ArchiveFile.encode(snapshot)
+                }.value
+                exportDocument = DayInInkBackupDocument(data: data)
+                isExporting = true
+            } catch {
+                report(error, title: "Couldn’t export backup")
+            }
         }
     }
 
     private func restore(_ imported: HabitArchive) {
-        pendingImport = nil
-        do {
-            try store.restore(imported)
-            notice = TransferNotice(title: "Backup imported", message: "Your habits and history have been restored.")
-        } catch {
-            report(error, title: "Couldn’t import backup", unchanged: true)
+        working = true
+        Task {
+            defer { working = false }
+            do {
+                try await store.restore(imported)
+                pendingImport = nil
+                notice = TransferNotice(title: "Backup imported", message: "Your habits and history have been restored.")
+            } catch {
+                report(error, title: "Couldn’t import backup", unchanged: true)
+            }
         }
     }
 
@@ -163,62 +167,4 @@ private struct TransferNotice: Identifiable {
     let id = UUID()
     let title: String
     let message: String
-}
-
-private struct LegacyBackupRequest: Identifiable {
-    let id = UUID()
-    let url: URL
-}
-
-/// Version 1 saved day components without a calendar identifier; never silently guess one.
-struct LegacyCalendarPicker: View {
-    let title: String
-    let onChoose: (Calendar) -> Void
-    var onCancel: (() -> Void)?
-    @State private var identifier = Calendar.current.identifier
-
-    private let calendars: [(Calendar.Identifier, String)] = [
-        (.gregorian, "Gregorian"), (.buddhist, "Buddhist"), (.chinese, "Chinese"),
-        (.coptic, "Coptic"), (.ethiopicAmeteMihret, "Ethiopic (Amete Mihret)"),
-        (.ethiopicAmeteAlem, "Ethiopic (Amete Alem)"), (.hebrew, "Hebrew"),
-        (.iso8601, "ISO 8601"), (.indian, "Indian"), (.islamic, "Islamic"),
-        (.islamicCivil, "Islamic Civil"), (.islamicTabular, "Islamic Tabular"),
-        (.islamicUmmAlQura, "Islamic Umm al-Qura"), (.japanese, "Japanese"),
-        (.persian, "Persian"), (.republicOfChina, "Republic of China")
-    ]
-
-    var body: some View {
-        NavigationStack {
-            Form {
-                Section {
-                    Text("Older versions saved day numbers without identifying their calendar. Choose the iPhone calendar used when this history was recorded—not a different calendar you selected later.")
-                    Picker("Original calendar", selection: $identifier) {
-                        ForEach(calendars, id: \.0) { calendar in
-                            Text(calendar.1).tag(calendar.0)
-                        }
-                    }
-                    .accessibilityIdentifier("legacy-calendar")
-                    Text("If you never changed your iPhone’s calendar, use the selection shown. Your existing data is kept if conversion fails.")
-                    Text("Some older calendars require era or leap-month information that the old file did not store. If conversion is unavailable, keep the original file and contact support instead of guessing.")
-                    Button("Use this calendar") {
-                        var calendar = Calendar(identifier: identifier)
-                        calendar.timeZone = .current
-                        onChoose(calendar)
-                    }
-                    .accessibilityIdentifier("confirm-legacy-calendar")
-                }
-                Section("Support and privacy") {
-                    Link("Help & Support", destination: URL(string: "https://apps.droessmj.com/day-in-ink/support.html")!)
-                    Link("Privacy Policy", destination: URL(string: "https://apps.droessmj.com/day-in-ink/privacy.html")!)
-                }
-            }
-            .navigationTitle(title)
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                if let onCancel {
-                    ToolbarItem(placement: .cancellationAction) { Button("Cancel", action: onCancel) }
-                }
-            }
-        }
-    }
 }

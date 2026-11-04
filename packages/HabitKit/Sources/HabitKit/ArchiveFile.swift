@@ -30,14 +30,14 @@ public struct ArchiveFile: Sendable {
 
     public init(url: URL) { self.url = url }
 
-    public func load(legacyCalendar: Calendar? = nil) throws -> HabitArchive? {
+    public func load() throws -> HabitArchive? {
         guard FileManager.default.fileExists(atPath: url.path) else { return nil }
-        return try Self.read(from: url, legacyCalendar: legacyCalendar)
+        return try Self.read(from: url)
     }
 
     /// Reads at most the byte limit plus one sentinel byte, including files that grow during reading.
     /// No unbounded Data(contentsOf:) allocation occurs before validation.
-    public static func read(from url: URL, legacyCalendar: Calendar? = nil) throws -> HabitArchive {
+    public static func read(from url: URL) throws -> HabitArchive {
         let handle = try FileHandle(forReadingFrom: url)
         defer { try? handle.close() }
         var data = Data()
@@ -48,43 +48,13 @@ public struct ArchiveFile: Sendable {
             guard chunk.count <= remaining else { throw ArchiveValidationError.resourceLimitExceeded }
             data.append(chunk)
         }
-        return try decode(data, legacyCalendar: legacyCalendar)
+        return try decode(data)
     }
 
-    /// v2 stores Gregorian local day keys. v1 did not record its calendar, era or leap-month identity.
-    /// Callers must ask for the original calendar/timezone; no current-calendar inference is performed.
-    /// Calendars with ambiguous era/cycle/leap-month keys are rejected rather than guessed.
-    /// Migration never changes the source file; callers save only after accepting conversion.
-    public static func decode(_ data: Data, legacyCalendar: Calendar? = nil) throws -> HabitArchive {
+    /// Only the complete current-state schema is accepted; older backups are never inferred or migrated.
+    public static func decode(_ data: Data) throws -> HabitArchive {
         guard data.count <= ArchiveLimits.maxBytes else { throw ArchiveValidationError.resourceLimitExceeded }
-        var archive = try JSONDecoder().decode(HabitArchive.self, from: data)
-        if archive.version == 1 {
-            guard let legacyCalendar else { throw ArchiveValidationError.legacyCalendarRequired }
-            if !archive.entries.isEmpty {
-                switch legacyCalendar.identifier {
-                case .gregorian, .iso8601, .buddhist, .hebrew, .islamic, .islamicCivil,
-                     .islamicTabular, .islamicUmmAlQura, .persian, .indian, .coptic, .ethiopicAmeteAlem:
-                    break
-                default:
-                    throw ArchiveValidationError.ambiguousLegacyCalendar
-                }
-            }
-            for index in archive.entries.indices {
-                let day = archive.entries[index].day
-                guard (1...20_000).contains(day.year), (1...13).contains(day.month), (1...31).contains(day.day),
-                      let date = legacyCalendar.date(from: DateComponents(year: day.year, month: day.month,
-                                                                          day: day.day, hour: 12)) else {
-                    throw ArchiveValidationError.invalidData
-                }
-                let parts = legacyCalendar.dateComponents([.year, .month, .day], from: date)
-                guard parts.year == day.year, parts.month == day.month, parts.day == day.day else {
-                    throw ArchiveValidationError.invalidData
-                }
-                archive.entries[index].day = HabitDay(date, calendar: legacyCalendar)
-            }
-            archive.version = 2
-        }
-        // A migrated import must also fit the canonical on-device representation before restoration.
+        let archive = try JSONDecoder().decode(HabitArchive.self, from: data)
         _ = try encode(archive)
         return archive
     }
@@ -104,19 +74,21 @@ public struct ArchiveFile: Sendable {
     }
 
     private static func validate(_ archive: HabitArchive) throws {
-        guard archive.version == 2 else { throw ArchiveValidationError.unsupportedVersion }
+        guard archive.version == 3 else { throw ArchiveValidationError.unsupportedVersion }
         guard archive.habits.count <= ArchiveLimits.maxHabits,
               archive.entries.count <= ArchiveLimits.maxEntries else { throw ArchiveValidationError.resourceLimitExceeded }
-        var habitIDs = Set<UUID>()
+        var habitStarts: [UUID: HabitDay] = [:]
         for habit in archive.habits {
-            guard habit.isValid, habitIDs.insert(habit.id).inserted else { throw ArchiveValidationError.invalidData }
+            guard habit.isValid, habitStarts[habit.id] == nil else { throw ArchiveValidationError.invalidData }
+            habitStarts[habit.id] = habit.startDay
         }
         var entryIDs = Set<UUID>()
         var entryKeys = Set<EntryKey>()
         for entry in archive.entries {
-            guard habitIDs.contains(entry.habitID), entryIDs.insert(entry.id).inserted,
+            guard let startDay = habitStarts[entry.habitID], entry.day >= startDay,
+                  entryIDs.insert(entry.id).inserted,
                   entryKeys.insert(EntryKey(habitID: entry.habitID, day: entry.day)).inserted,
-                  entry.value.isFinite, entry.value >= 0, entry.target.isFinite, entry.target > 0,
+                  !entry.value.isNaN, entry.value >= 0, !entry.target.isNaN, entry.target > 0,
                   (entry.kind == .checkIn ? entry.checkIn != nil : entry.checkIn == nil),
                   ArchiveLimits.validText(entry.unit, maximum: ArchiveLimits.maxUnitScalars),
                   entry.day.ordinal != nil else { throw ArchiveValidationError.invalidData }
@@ -136,16 +108,12 @@ public enum ArchiveValidationError: LocalizedError {
     case unsupportedVersion
     case invalidData
     case resourceLimitExceeded
-    case legacyCalendarRequired
-    case ambiguousLegacyCalendar
 
     public var errorDescription: String? {
         switch self {
         case .unsupportedVersion: "This backup uses a format this version of Day in Ink doesn’t support."
         case .invalidData: "This file contains invalid or inconsistent Day in Ink data."
         case .resourceLimitExceeded: "This backup exceeds Day in Ink’s supported file, record or text limits."
-        case .legacyCalendarRequired: "Choose the calendar and timezone originally used for this older backup before migrating its day history."
-        case .ambiguousLegacyCalendar: "This older backup omitted era, cycle or leap-month information required by its calendar. Its day history cannot be safely migrated; the original file has not been changed."
         }
     }
 }

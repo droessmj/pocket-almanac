@@ -22,10 +22,6 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
-	<key>NSPrivacyAccessedAPITypeDescriptorBundleIdentifier</key>
-	<string>com.droessmj.blotter</string>
-	<key>SiftKeychainAccessGroup</key>
-	<string>$(AppIdentifierPrefix)com.droessmj.sift.shared</string>
 	<key>UILaunchScreen</key>
 	<dict/>
 	<key>UISupportedInterfaceOrientations</key>

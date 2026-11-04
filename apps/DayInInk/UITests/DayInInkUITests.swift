@@ -17,12 +17,12 @@ final class DayInInkUITests: XCTestCase {
         capture("Today")
         app.buttons["quick-Walk"].tap()
         app.buttons["quick-Walk"].tap()
-        XCTAssertTrue(app.staticTexts["2,000 / 10,000 steps"].exists)
+        assertDailyTotal(2000)
         app.terminate()
         app.launch()
-        XCTAssertTrue(app.staticTexts["2,000 / 10,000 steps"].waitForExistence(timeout: 10))
+        assertDailyTotal(2000)
         app.buttons["tab-trends"].tap()
-        XCTAssertTrue(app.staticTexts["Little steps add up."].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["90 days"].waitForExistence(timeout: 5))
         capture("Trends")
     }
 
@@ -31,15 +31,15 @@ final class DayInInkUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Check in for today"].waitForExistence(timeout: 5))
         app.buttons["Check in for today"].tap()
         app.buttons["checkin-failed"].tap()
-        app.navigationBars.buttons["Save"].tap()
+        saveAndWait()
         XCTAssertTrue(app.staticTexts["Failed"].waitForExistence(timeout: 5))
         app.buttons["Check in for today"].tap()
         app.buttons["checkin-passed"].tap()
-        app.navigationBars.buttons["Save"].tap()
+        saveAndWait()
         XCTAssertTrue(app.staticTexts["Passed"].waitForExistence(timeout: 5))
         capture("Habit detail")
         app.buttons["Check in for today"].tap()
-        app.buttons["Clear this day"].tap()
+        clearAndWait()
         XCTAssertTrue(app.staticTexts["Passed"].waitForExistence(timeout: 5))
     }
 
@@ -47,13 +47,13 @@ final class DayInInkUITests: XCTestCase {
         let quick = app.buttons["quick-Mind clearing"]
         XCTAssertEqual(quick.label, "Mark failed for Mind clearing")
         quick.tap()
-        XCTAssertEqual(quick.label, "Mark passed for Mind clearing")
+        assertLabel(quick, equals: "Mark passed for Mind clearing")
         app.terminate()
         app.launch()
         XCTAssertTrue(quick.waitForExistence(timeout: 10))
         XCTAssertEqual(quick.label, "Mark passed for Mind clearing")
         quick.tap()
-        XCTAssertEqual(quick.label, "Mark failed for Mind clearing")
+        assertLabel(quick, equals: "Mark failed for Mind clearing")
     }
 
     func testCreatesCustomHabit() {
@@ -62,7 +62,7 @@ final class DayInInkUITests: XCTestCase {
         XCTAssertTrue(field.waitForExistence(timeout: 5))
         field.tap()
         field.typeText("Stretch")
-        app.navigationBars.buttons["Create"].tap()
+        saveAndWait("Create")
         app.buttons["tab-habits"].tap()
         XCTAssertTrue(app.staticTexts["Stretch"].waitForExistence(timeout: 5))
         app.terminate()
@@ -79,7 +79,7 @@ final class DayInInkUITests: XCTestCase {
         XCTAssertTrue(failed.waitForExistence(timeout: 5))
         if !failed.isHittable { app.swipeUp() }
         failed.tap()
-        app.navigationBars.buttons["Save"].tap()
+        saveAndWait()
         app.buttons["tab-today"].tap()
         let quick = app.buttons["quick-Mind clearing"]
         XCTAssertEqual(quick.label, "Mark passed for Mind clearing")
@@ -89,15 +89,15 @@ final class DayInInkUITests: XCTestCase {
         XCTAssertTrue(quick.waitForExistence(timeout: 10))
         XCTAssertEqual(quick.label, "Mark passed for Mind clearing")
         quick.tap()
-        XCTAssertEqual(quick.label, "Mark failed for Mind clearing")
+        assertLabel(quick, equals: "Mark failed for Mind clearing")
         app.buttons["habit-Mind clearing"].tap()
         app.buttons["Check in for today"].tap()
-        app.buttons["Clear this day"].tap()
+        clearAndWait()
         XCTAssertTrue(app.staticTexts["Failed"].waitForExistence(timeout: 5))
         app.buttons["Check in for today"].tap()
         XCTAssertTrue(app.buttons["checkin-failed"].isSelected)
         app.buttons["checkin-passed"].tap()
-        app.navigationBars.buttons["Save"].tap()
+        saveAndWait()
         XCTAssertTrue(app.staticTexts["Passed"].waitForExistence(timeout: 5))
     }
 
@@ -112,7 +112,7 @@ final class DayInInkUITests: XCTestCase {
         XCTAssertTrue(failed.waitForExistence(timeout: 5))
         if !failed.isHittable { app.swipeUp() }
         failed.tap()
-        app.navigationBars.buttons["Create"].tap()
+        saveAndWait("Create")
         let quick = app.buttons["quick-Practice"]
         XCTAssertTrue(quick.waitForExistence(timeout: 5))
         XCTAssertEqual(quick.label, "Mark passed for Practice")
@@ -128,13 +128,13 @@ final class DayInInkUITests: XCTestCase {
         let quick = app.buttons["quick-Walk"]
         XCTAssertEqual(quick.label, "Mark failed for Walk")
         quick.tap()
-        XCTAssertEqual(quick.label, "Mark passed for Walk")
+        assertLabel(quick, equals: "Mark passed for Walk")
         app.terminate()
         app.launch()
         XCTAssertTrue(quick.waitForExistence(timeout: 10))
         XCTAssertEqual(quick.label, "Mark passed for Walk")
         quick.tap()
-        XCTAssertEqual(quick.label, "Mark failed for Walk")
+        assertLabel(quick, equals: "Mark failed for Walk")
     }
 
     func testSwitchingTrackingPreservesRecordedProgressUntilCleared() {
@@ -142,22 +142,24 @@ final class DayInInkUITests: XCTestCase {
         switchWalkToPassFail()
         app.terminate()
         app.launch()
-        XCTAssertTrue(app.staticTexts["1,000 / 10,000 steps"].waitForExistence(timeout: 10))
+        assertDailyTotal(1000)
         app.buttons["habit-Walk"].tap()
         app.buttons["Check in for today"].tap()
         let total = app.textFields["Daily total"]
         XCTAssertTrue(total.waitForExistence(timeout: 5))
-        app.buttons["+1"].tap()
-        app.navigationBars.buttons["Save"].tap()
-        XCTAssertTrue(app.staticTexts["1,001 / 10,000 steps"].waitForExistence(timeout: 5))
+        app.buttons["log-add-1"].tap()
+        saveAndWait()
         app.buttons["Check in for today"].tap()
+        XCTAssertTrue(total.waitForExistence(timeout: 5))
+        XCTAssertEqual(Decimal(string: total.value as? String ?? ""), Decimal(1001))
         let clear = app.buttons["Clear this day"]
         if !clear.isHittable { app.swipeUp() }
         clear.tap()
+        XCTAssertTrue(app.navigationBars.buttons["Save"].waitForNonExistence(timeout: 10))
         app.buttons["Check in for today"].tap()
         XCTAssertTrue(app.buttons["checkin-failed"].waitForExistence(timeout: 5))
         app.buttons["checkin-failed"].tap()
-        app.navigationBars.buttons["Save"].tap()
+        saveAndWait()
         XCTAssertTrue(app.staticTexts["Failed"].waitForExistence(timeout: 5))
         app.terminate()
         app.launch()
@@ -174,7 +176,7 @@ final class DayInInkUITests: XCTestCase {
         if !passFail.isHittable { app.swipeUp() }
         XCTAssertTrue(passFail.isEnabled)
         passFail.tap()
-        app.navigationBars.buttons["Save"].tap()
+        saveAndWait()
         XCTAssertTrue(app.staticTexts["Daily · pass / fail"].firstMatch.waitForExistence(timeout: 5))
     }
 
@@ -206,7 +208,7 @@ final class DayInInkUITests: XCTestCase {
         app.navigationBars.buttons.element(boundBy: 0).tap()
         app.navigationBars.buttons["Done"].tap()
         app.buttons["tab-today"].tap()
-        XCTAssertTrue(app.staticTexts["2,000 / 10,000 steps"].waitForExistence(timeout: 5))
+        assertDailyTotal(2000)
     }
 
     func testBackupExportsAndRestoresProgressThroughFiles() {
@@ -226,7 +228,7 @@ final class DayInInkUITests: XCTestCase {
         closeDataTransfer()
         app.buttons["tab-today"].tap()
         app.buttons["quick-Walk"].tap()
-        XCTAssertTrue(app.staticTexts["3,000 / 10,000 steps"].exists)
+        assertDailyTotal(3000)
         openDataTransfer()
         app.buttons["import-backup"].tap()
         let backup = app.cells.matching(NSPredicate(format: "identifier BEGINSWITH %@", name)).firstMatch
@@ -244,10 +246,10 @@ final class DayInInkUITests: XCTestCase {
         app.alerts["Backup imported"].buttons["OK"].tap()
         closeDataTransfer()
         app.buttons["tab-today"].tap()
-        XCTAssertTrue(app.staticTexts["2,000 / 10,000 steps"].waitForExistence(timeout: 5))
+        assertDailyTotal(2000)
         app.terminate()
         app.launch()
-        XCTAssertTrue(app.staticTexts["2,000 / 10,000 steps"].waitForExistence(timeout: 10))
+        assertDailyTotal(2000)
     }
 
     func testSmallExactTotalSurvivesReopeningAndSavingUnchanged() {
@@ -259,17 +261,119 @@ final class DayInInkUITests: XCTestCase {
         let previous = total.value as? String ?? ""
         total.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: previous.count) + "0.0000004")
         XCTAssertTrue(app.navigationBars.buttons["Save"].isEnabled, app.debugDescription)
-        app.navigationBars.buttons["Save"].tap()
+        saveAndWait()
         app.buttons["Check in for today"].tap()
         XCTAssertTrue(total.waitForExistence(timeout: 5))
-        XCTAssertEqual(Double(total.value as? String ?? ""), 0.0000004)
-        app.navigationBars.buttons["Save"].tap()
+        XCTAssertEqual(Decimal(string: total.value as? String ?? ""), Decimal(string: "0.0000004"))
+        saveAndWait()
         app.terminate()
         app.launch()
         app.buttons["habit-Walk"].tap()
         app.buttons["Check in for today"].tap()
         XCTAssertTrue(total.waitForExistence(timeout: 5))
-        XCTAssertEqual(Double(total.value as? String ?? ""), 0.0000004)
+        XCTAssertEqual(Decimal(string: total.value as? String ?? ""), Decimal(string: "0.0000004"))
+    }
+
+    private func clearAndWait() {
+        let clear = app.buttons["Clear this day"]
+        XCTAssertTrue(clear.waitForExistence(timeout: 5))
+        if !clear.isHittable { app.swipeUp() }
+        clear.tap()
+        XCTAssertTrue(app.navigationBars.buttons["Save"].waitForNonExistence(timeout: 10))
+    }
+
+    func testRejectsMalformedNumericTotalsAndAcceptsArabicDecimalDigits() {
+        app.buttons["habit-Walk"].tap()
+        app.buttons["Check in for today"].tap()
+        let total = app.textFields["Daily total"]
+        XCTAssertTrue(total.waitForExistence(timeout: 5))
+        replace(total, with: "12.3.4")
+        XCTAssertFalse(app.navigationBars.buttons["Save"].isEnabled)
+        replace(total, with: "12junk")
+        XCTAssertFalse(app.navigationBars.buttons["Save"].isEnabled)
+        replace(total, with: "٠.٠٠٠٠٠٠٤")
+        XCTAssertTrue(app.navigationBars.buttons["Save"].isEnabled)
+        saveAndWait()
+        app.buttons["Check in for today"].tap()
+        XCTAssertTrue(total.waitForExistence(timeout: 5))
+        XCTAssertEqual(Decimal(string: total.value as? String ?? ""), Decimal(string: "0.0000004"))
+    }
+
+    func testCommaLocaleAcceptsPersianDigitsWithoutRounding() {
+        app.terminate()
+        app.launchArguments = ["-AppleLanguages", "(en)", "-AppleLocale", "de_DE"]
+        app.launch()
+        XCTAssertTrue(app.buttons["habit-Walk"].waitForExistence(timeout: 10))
+        app.buttons["habit-Walk"].tap()
+        app.buttons["Check in for today"].tap()
+        let total = app.textFields["Daily total"]
+        XCTAssertTrue(total.waitForExistence(timeout: 5))
+        replace(total, with: "۰,۰۰۰۰۰۰۴")
+        XCTAssertTrue(app.navigationBars.buttons["Save"].isEnabled)
+        saveAndWait()
+        app.buttons["Check in for today"].tap()
+        XCTAssertTrue(total.waitForExistence(timeout: 5))
+        XCTAssertEqual(Decimal(string: total.value as? String ?? "", locale: Locale(identifier: "de_DE")),
+                       Decimal(string: "0.0000004"))
+    }
+
+    func testLargestDynamicTypeKeepsLoggingAndNavigationReachable() {
+        app.terminate()
+        app.launchArguments += ["-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
+        app.launch()
+        XCTAssertTrue(app.buttons["tab-navigation"].waitForExistence(timeout: 10))
+        let quick = app.buttons["quick-Walk"]
+        for _ in 0..<8 where !quick.isHittable { app.swipeUp() }
+        XCTAssertTrue(quick.isHittable)
+        quick.tap()
+        app.buttons["tab-navigation"].tap()
+        app.buttons["tab-trends"].tap()
+        let period = app.buttons["90 days"]
+        for _ in 0..<8 where !period.isHittable { app.swipeUp() }
+        XCTAssertTrue(period.isHittable, app.debugDescription)
+        period.tap()
+        XCTAssertTrue(period.isSelected)
+        capture("Trends - largest text")
+        app.swipeUp()
+        capture("Trend card - largest text")
+        app.buttons["tab-navigation"].tap()
+        app.buttons["tab-habits"].tap()
+        XCTAssertTrue(app.buttons["Options for Walk"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["add-habit"].isHittable)
+        capture("Habits - largest text")
+        app.swipeUp()
+        capture("Habit rows - largest text")
+    }
+
+    private func assertDailyTotal(_ expected: Decimal) {
+        let habit = app.buttons["habit-Walk"]
+        XCTAssertTrue(habit.waitForExistence(timeout: 10))
+        habit.tap()
+        app.buttons["Check in for today"].tap()
+        let total = app.textFields["Daily total"]
+        XCTAssertTrue(total.waitForExistence(timeout: 5))
+        XCTAssertEqual(Decimal(string: total.value as? String ?? "", locale: Locale(identifier: "en_US")), expected)
+        app.navigationBars.buttons["Cancel"].tap()
+        XCTAssertTrue(app.navigationBars.buttons["Save"].waitForNonExistence(timeout: 5))
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+    }
+
+    private func replace(_ field: XCUIElement, with value: String) {
+        field.coordinate(withNormalizedOffset: CGVector(dx: 0.98, dy: 0.5)).tap()
+        let previous = field.value as? String ?? ""
+        field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: previous.count) + value)
+    }
+
+    private func saveAndWait(_ title: String = "Save") {
+        let button = app.navigationBars.buttons[title]
+        button.tap()
+        XCTAssertTrue(button.waitForNonExistence(timeout: 10))
+    }
+
+    private func assertLabel(_ element: XCUIElement, equals label: String) {
+        let predicate = NSPredicate(format: "label == %@", label)
+        let expectation = XCTNSPredicateExpectation(predicate: predicate, object: element)
+        XCTAssertEqual(XCTWaiter.wait(for: [expectation], timeout: 5), .completed)
     }
 
     private func openDataTransfer() {

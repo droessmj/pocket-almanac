@@ -14,7 +14,149 @@ final class HabitKitTests: XCTestCase {
 
     private func habit(kind: HabitKind = .progress) -> Habit {
         Habit(name: "Walk", emoji: "🚶", color: .blue, kind: kind, target: 100, step: 10,
-              unit: "steps", createdAt: date(1))
+              unit: "steps", createdAt: date(1), calendar: calendar)
+    }
+
+    func testQuickAddArithmeticRejectsPrecisionLossAndOverflow() throws {
+        let tiny = try XCTUnwrap(Decimal(string: "1e-120"))
+        let huge = try XCTUnwrap(Decimal(string: "1e120"))
+        XCTAssertThrowsError(try HabitAmount.adding(huge, tiny))
+        XCTAssertThrowsError(try HabitAmount.multiplying(NSDecimalNumber.maximum.decimalValue, by: 5))
+        XCTAssertThrowsError(try HabitAmount.adding(.nan, 1))
+        let step = try XCTUnwrap(Decimal(string: "0.1"))
+        var total: Decimal = 0
+        for _ in 0..<10 { total = try HabitAmount.adding(total, step) }
+        XCTAssertEqual(total, 1)
+        XCTAssertEqual(try HabitAmount.multiplying(step, by: 5), Decimal(string: "0.5"))
+    }
+
+    func testRecordUsesCurrentHabitSettingsButKeepsRecordedSnapshots() throws {
+        let original = habit()
+        var archive = HabitArchive(habits: [original])
+        XCTAssertTrue(archive.record(original, on: date(2), value: 100, calendar: calendar))
+        var edited = original
+        edited.target = 200
+        edited.unit = "meters"
+        archive.habits[0] = edited
+        XCTAssertTrue(archive.record(original, on: date(3), value: 150, calendar: calendar))
+        let newEntry = try XCTUnwrap(archive.entry(for: edited, on: date(3), calendar: calendar))
+        XCTAssertEqual(newEntry.target, 200)
+        XCTAssertEqual(newEntry.unit, "meters")
+        XCTAssertFalse(newEntry.isComplete)
+        XCTAssertTrue(archive.record(original, on: date(2), value: 110, calendar: calendar))
+        let historical = try XCTUnwrap(archive.entry(for: edited, on: date(2), calendar: calendar))
+        XCTAssertEqual(historical.target, 100)
+        XCTAssertEqual(historical.unit, "steps")
+        edited.kind = .checkIn
+        archive.habits[0] = edited
+        XCTAssertFalse(archive.record(original, on: date(4), value: 100, calendar: calendar))
+        XCTAssertTrue(archive.record(original, on: date(4), checkIn: .passed, calendar: calendar))
+        XCTAssertEqual(archive.entry(for: edited, on: date(4), calendar: calendar)?.kind, .checkIn)
+    }
+
+    func testChartFractionDoesNotOverflowOrUnderflowDecimalDivision() throws {
+        let tiny = try XCTUnwrap(Decimal(string: "1e-120"))
+        let huge = try XCTUnwrap(Decimal(string: "1e120"))
+        let habit = Habit(name: "Extreme", emoji: "💧", color: .mint, kind: .progress,
+                          target: huge, step: tiny, createdAt: date(1), calendar: calendar)
+        var entry = HabitEntry(habit: habit, date: date(2), value: tiny, calendar: calendar)
+        XCTAssertTrue(entry.fraction.isFinite)
+        XCTAssertGreaterThan(entry.fraction, 0)
+        XCTAssertEqual(entry.fraction / 1e-240, 1, accuracy: 0.000000001)
+        entry.target = tiny
+        entry.value = huge
+        XCTAssertEqual(entry.fraction, 1)
+        XCTAssertTrue(entry.isComplete)
+    }
+
+    func testDecimalStepsReachGoalExactlyAndRoundTripTinyAmounts() throws {
+        for amount in ["0.1", "0.00000000000000000001"] {
+            let step = try XCTUnwrap(Decimal(string: amount))
+            let habit = Habit(name: "Measure", emoji: "💧", color: .mint, kind: .progress,
+                              target: step * 10, step: step, createdAt: date(1), calendar: calendar)
+            var archive = HabitArchive(habits: [habit])
+            for count in 1...10 {
+                let current = archive.entry(for: habit, on: date(2), calendar: calendar)?.value ?? 0
+                XCTAssertTrue(archive.record(habit, on: date(2), value: current + step, calendar: calendar))
+                let entry = try XCTUnwrap(archive.entry(for: habit, on: date(2), calendar: calendar))
+                XCTAssertEqual(entry.value, step * Decimal(count))
+                XCTAssertEqual(entry.isComplete, count == 10)
+                XCTAssertEqual(entry.fraction, Double(count) / 10, accuracy: 0.000000001)
+            }
+            let restored = try ArchiveFile.decode(ArchiveFile.encode(archive))
+            XCTAssertEqual(restored, archive)
+            XCTAssertEqual(restored.habits[0].step, step)
+            XCTAssertEqual(restored.entries[0].value, habit.target)
+            XCTAssertTrue(restored.isComplete(habit, on: date(2), calendar: calendar))
+        }
+    }
+
+    func testRecordReportsRejectionWithoutChangingHistory() throws {
+        let progress = habit()
+        let checkIn = habit(kind: .checkIn)
+        let absent = habit()
+        var archive = HabitArchive(habits: [progress, checkIn])
+        XCTAssertFalse(archive.record(progress, on: date(2), calendar: calendar))
+        XCTAssertFalse(archive.record(progress, on: date(2), checkIn: .passed, calendar: calendar))
+        XCTAssertFalse(archive.record(progress, on: date(2), value: 1, checkIn: .passed, calendar: calendar))
+        XCTAssertFalse(archive.record(checkIn, on: date(2), value: 1, calendar: calendar))
+        XCTAssertFalse(archive.record(absent, on: date(2), value: 1, calendar: calendar))
+        XCTAssertFalse(archive.record(progress, on: Date(timeIntervalSinceReferenceDate: .infinity),
+                                      value: 1, calendar: calendar))
+        XCTAssertFalse(archive.record(progress, on: date(2), value: 1, calendar: calendar,
+                                      now: Date(timeIntervalSinceReferenceDate: .nan)))
+        XCTAssertTrue(archive.entries.isEmpty)
+        XCTAssertTrue(archive.record(progress, on: date(2), value: 0, calendar: calendar))
+        XCTAssertTrue(archive.record(checkIn, on: date(2), checkIn: .failed, calendar: calendar))
+        let recorded = archive
+        XCTAssertFalse(archive.record(progress, on: date(2), value: .nan, calendar: calendar))
+        XCTAssertFalse(archive.record(checkIn, on: date(2), calendar: calendar))
+        XCTAssertEqual(archive, recorded)
+    }
+
+    func testEntryIndexesFollowPublicMutationsAndValueCopies() throws {
+        let first = habit()
+        let second = habit()
+        var archive = HabitArchive(habits: [first, second])
+        XCTAssertTrue(archive.record(first, on: date(2), value: 100, calendar: calendar))
+        XCTAssertTrue(archive.record(first, on: date(3), value: 100, calendar: calendar))
+        XCTAssertTrue(archive.record(second, on: date(2), value: 20, calendar: calendar))
+        let original = archive
+        archive.entries.swapAt(0, 2)
+        XCTAssertEqual(archive.entry(for: first, on: date(2), calendar: calendar)?.value, 100)
+        archive.entries[2].value = 40
+        XCTAssertEqual(archive.entry(for: first, on: date(2), calendar: calendar)?.value, 40)
+        XCTAssertEqual(original.entry(for: first, on: date(2), calendar: calendar)?.value, 100)
+        archive.entries[2].day = HabitDay(date(4), calendar: calendar)
+        XCTAssertNil(archive.entry(for: first, on: date(2), calendar: calendar))
+        XCTAssertEqual(archive.entry(for: first, on: date(4), calendar: calendar)?.value, 40)
+        archive.entries[2].habitID = second.id
+        XCTAssertNil(archive.entry(for: first, on: date(4), calendar: calendar))
+        XCTAssertEqual(archive.entry(for: second, on: date(4), calendar: calendar)?.value, 40)
+        archive.entries.removeFirst()
+        XCTAssertNil(archive.entry(for: second, on: date(2), calendar: calendar))
+        XCTAssertEqual(archive.streak(for: first, through: date(3), calendar: calendar, now: date(4)), 1)
+        archive.entries = Array(original.entries.reversed())
+        XCTAssertEqual(archive.samples(for: first, days: 3, through: date(3), calendar: calendar).map(\.fraction),
+                       [0, 1, 1])
+        archive.entries.reverse()
+        XCTAssertEqual(archive, original)
+        let decoded = try ArchiveFile.decode(ArchiveFile.encode(archive))
+        XCTAssertEqual(decoded.entry(for: second, on: date(2), calendar: calendar)?.value, 20)
+        archive.habits.removeAll { $0.id == second.id }
+        XCTAssertFalse(archive.record(second, on: date(2), value: 50, calendar: calendar))
+        archive.entries.removeAll()
+        XCTAssertNil(archive.entry(for: first, on: date(2), calendar: calendar))
+        XCTAssertTrue(archive.record(first, on: date(2), value: 10, calendar: calendar))
+        archive.clear(first, on: date(2), calendar: calendar)
+        XCTAssertNil(archive.entry(for: first, on: date(2), calendar: calendar))
+        archive.entries.append(original.entries[0])
+        archive.entries.append(original.entries[1])
+        XCTAssertEqual(archive.entry(for: first, on: date(3), calendar: calendar)?.value, 100)
+        archive.clear(first, on: date(2), calendar: calendar)
+        XCTAssertEqual(archive.entry(for: first, on: date(3), calendar: calendar)?.value, 100)
+        archive.entries.removeAll { $0.habitID == first.id }
+        XCTAssertNil(archive.entry(for: first, on: date(3), calendar: calendar))
     }
 
     func testPassFailDefaultsAndExplicitOverrides() {
@@ -84,18 +226,6 @@ final class HabitKitTests: XCTestCase {
         }
     }
 
-    func testLegacyBackupsWithoutDefaultStillPassUnrecordedDays() throws {
-        let archive = HabitArchive(habits: [habit(kind: .checkIn), habit()])
-        var object = try XCTUnwrap(JSONSerialization.jsonObject(with: ArchiveFile.encode(archive)) as? [String: Any])
-        var habits = try XCTUnwrap(object["habits"] as? [[String: Any]])
-        for index in habits.indices { habits[index].removeValue(forKey: "defaultPassed") }
-        object["habits"] = habits
-        object["version"] = 1
-        let imported = try ArchiveFile.decode(JSONSerialization.data(withJSONObject: object), legacyCalendar: calendar)
-        XCTAssertEqual(imported, archive)
-        XCTAssertTrue(imported.habits.allSatisfy(\.defaultPassed))
-        XCTAssertTrue(imported.isComplete(imported.habits[0], on: date(2), calendar: calendar))
-    }
 
     func testProgressAccumulatesAndCanExceedGoal() {
         let habit = habit()
@@ -130,7 +260,7 @@ final class HabitKitTests: XCTestCase {
         archive.record(habit, on: date(5), value: 100, calendar: calendar)
         let original = try XCTUnwrap(archive.entry(for: habit, on: date(5), calendar: calendar))
         habit = Habit(id: habit.id, name: habit.name, emoji: habit.emoji, color: habit.color,
-                      kind: .checkIn, createdAt: habit.createdAt)
+                      kind: .checkIn, createdAt: habit.createdAt, startDay: habit.startDay)
         archive.habits[0] = habit
 
         XCTAssertEqual(archive.entry(for: habit, on: date(5), calendar: calendar), original)
@@ -160,7 +290,8 @@ final class HabitKitTests: XCTestCase {
         archive.record(habit, on: date(5), checkIn: .failed, calendar: calendar)
         let original = try XCTUnwrap(archive.entry(for: habit, on: date(5), calendar: calendar))
         habit = Habit(id: habit.id, name: habit.name, emoji: habit.emoji, color: habit.color,
-                      kind: .progress, target: 20, step: 5, unit: "pages", createdAt: habit.createdAt)
+                      kind: .progress, target: 20, step: 5, unit: "pages", createdAt: habit.createdAt,
+                      startDay: habit.startDay)
         archive.habits[0] = habit
 
         XCTAssertEqual(archive.entry(for: habit, on: date(5), calendar: calendar), original)
@@ -177,13 +308,13 @@ final class HabitKitTests: XCTestCase {
     func testRejectsInvalidValuesAndOutOfRangeDates() {
         let habit = habit()
         var archive = HabitArchive(habits: [habit])
-        for invalid in [-1, Double.nan, .infinity] {
-            archive.record(habit, on: date(5), value: invalid, calendar: calendar)
+        for invalid in [Decimal(-1), .nan] {
+            XCTAssertFalse(archive.record(habit, on: date(5), value: invalid, calendar: calendar))
         }
-        archive.record(habit, on: date(1, month: 2), value: 30, calendar: calendar)
-        archive.record(habit, on: date(7), value: 30, calendar: calendar, now: date(6))
+        XCTAssertFalse(archive.record(habit, on: date(1, month: 2), value: 30, calendar: calendar))
+        XCTAssertFalse(archive.record(habit, on: date(7), value: 30, calendar: calendar, now: date(6)))
         XCTAssertTrue(archive.entries.isEmpty)
-        archive.record(habit, on: date(5), value: 0, calendar: calendar)
+        XCTAssertTrue(archive.record(habit, on: date(5), value: 0, calendar: calendar))
         XCTAssertEqual(archive.entries.count, 1)
     }
 
@@ -217,7 +348,8 @@ final class HabitKitTests: XCTestCase {
     func testUnfinishedTodayPreservesYesterdayStreak() {
         let now = Date()
         let yesterday = calendar.date(byAdding: .day, value: -1, to: now)!
-        let habit = Habit(name: "Read", emoji: "📚", color: .rose, kind: .checkIn, createdAt: yesterday)
+        let habit = Habit(name: "Read", emoji: "📚", color: .rose, kind: .checkIn, createdAt: yesterday,
+                          calendar: calendar)
         var archive = HabitArchive(habits: [habit])
         archive.record(habit, on: yesterday, checkIn: .passed, calendar: calendar)
         XCTAssertEqual(archive.streak(for: habit, through: now, calendar: calendar), 2)

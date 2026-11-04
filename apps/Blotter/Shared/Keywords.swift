@@ -3,8 +3,8 @@
 
 import Foundation
 
-enum Sift {
-    static let appGroup = "group.com.droessmj.sift"
+enum Blotter {
+    static let appGroup = "group.com.droessmj.blotter"
 }
 
 /// How keywords are compared to message text. Defaults: any case, any accents, whole words only.
@@ -21,7 +21,7 @@ enum KeywordStore {
     private static let matchCaseKey = "matchCase"
     private static let matchAccentsKey = "matchAccents"
     private static let wholeWordsKey = "wholeWords"
-    private static var defaults: UserDefaults? { UserDefaults(suiteName: Sift.appGroup) }
+    private static var defaults: UserDefaults? { UserDefaults(suiteName: Blotter.appGroup) }
 
     static func load() -> [String] { defaults?.stringArray(forKey: keywordsKey) ?? [] }
     static func save(_ keywords: [String]) { defaults?.set(keywords, forKey: keywordsKey) }

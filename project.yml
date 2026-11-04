@@ -1,4 +1,4 @@
-name: Sift
+name: Blotter
 options:
   bundleIdPrefix: com.droessmj
   deploymentTarget:
@@ -13,18 +13,18 @@ settings:
     CODE_SIGN_STYLE: Automatic
     TARGETED_DEVICE_FAMILY: "1"
     MARKETING_VERSION: "1.0.0"
-    CURRENT_PROJECT_VERSION: "3"
+    CURRENT_PROJECT_VERSION: "4"
     ITSAppUsesNonExemptEncryption: NO
 packages:
   HabitKit:
     path: packages/HabitKit
 targets:
-  Sift:
+  Blotter:
     type: application
     platform: iOS
-    sources: [apps/Sift/App, apps/Sift/Shared]
+    sources: [apps/Blotter/App, apps/Blotter/Shared]
     info:
-      path: apps/Sift/App/Info.plist
+      path: apps/Blotter/App/Info.plist
       properties:
         CFBundleDisplayName: Blotter
         CFBundleShortVersionString: $(MARKETING_VERSION)
@@ -32,32 +32,27 @@ targets:
         UILaunchScreen: {}
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait, UIInterfaceOrientationPortraitUpsideDown, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
         ITSAppUsesNonExemptEncryption: false
-        SiftKeychainAccessGroup: $(AppIdentifierPrefix)com.droessmj.sift.shared
-        NSPrivacyAccessedAPITypeDescriptorBundleIdentifier: com.droessmj.blotter
     privacyManifest:
-      path: apps/Sift/Shared/PrivacyInfo.xcprivacy
+      path: apps/Blotter/Shared/PrivacyInfo.xcprivacy
     entitlements:
-      path: apps/Sift/App/Sift.entitlements
+      path: apps/Blotter/App/Blotter.entitlements
       properties:
-        com.apple.security.application-groups: [group.com.droessmj.sift]
-        # Retained only so the app can delete activity saved by older builds.
-        keychain-access-groups: [$(AppIdentifierPrefix)com.droessmj.sift.shared]
+        com.apple.security.application-groups: [group.com.droessmj.blotter]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.droessmj.blotter
         TARGETED_DEVICE_FAMILY: "1"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
     dependencies:
-      - target: SiftFilter
-  SiftFilter:
+      - target: BlotterFilter
+  BlotterFilter:
     type: app-extension
     platform: iOS
     sources:
-      - apps/Sift/Filter
-      - path: apps/Sift/Shared
-        excludes: [LegacyActivityCleanup.swift]
+      - apps/Blotter/Filter
+      - apps/Blotter/Shared
     info:
-      path: apps/Sift/Filter/Info.plist
+      path: apps/Blotter/Filter/Info.plist
       properties:
         CFBundleDisplayName: Blotter
         CFBundleShortVersionString: $(MARKETING_VERSION)
@@ -65,15 +60,12 @@ targets:
         NSExtension:
           NSExtensionPointIdentifier: com.apple.identitylookup.message-filter
           NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).MessageFilterExtension
-        # Filter extensions are signed with a team-prefixed bundle ID, so no resolvable key exists
-        # for the privacy manifest; the manifest itself still ships.
-        NSPrivacyAccessedAPITypeDescriptorBundleIdentifier: []
     privacyManifest:
-      path: apps/Sift/Shared/PrivacyInfo.xcprivacy
+      path: apps/Blotter/Shared/PrivacyInfo.xcprivacy
     entitlements:
-      path: apps/Sift/Filter/SiftFilter.entitlements
+      path: apps/Blotter/Filter/BlotterFilter.entitlements
       properties:
-        com.apple.security.application-groups: [group.com.droessmj.sift]
+        com.apple.security.application-groups: [group.com.droessmj.blotter]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.droessmj.blotter.filter
@@ -115,10 +107,10 @@ targets:
     dependencies:
       - target: DayInInk
 schemes:
-  Sift:
+  Blotter:
     build:
       targets:
-        Sift: all
+        Blotter: all
   DayInInk:
     build:
       targets:

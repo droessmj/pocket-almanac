@@ -27,7 +27,5 @@
 		<key>NSExtensionPrincipalClass</key>
 		<string>$(PRODUCT_MODULE_NAME).MessageFilterExtension</string>
 	</dict>
-	<key>NSPrivacyAccessedAPITypeDescriptorBundleIdentifier</key>
-	<array/>
 </dict>
 </plist>

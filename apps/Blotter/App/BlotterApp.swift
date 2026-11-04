@@ -4,10 +4,8 @@
 import SwiftUI
 
 @main
-struct SiftApp: App {
-    @State private var setupDone = (UserDefaults(suiteName: Sift.appGroup)?.bool(forKey: "setupDone")) ?? false
-    @Environment(\.scenePhase) private var scenePhase
-    @State private var cleanupError: String?
+struct BlotterApp: App {
+    @State private var setupDone = (UserDefaults(suiteName: Blotter.appGroup)?.bool(forKey: "setupDone")) ?? false
 
     var body: some Scene {
         WindowGroup {
@@ -17,37 +15,10 @@ struct SiftApp: App {
                 } else {
                     SetupView {
                         setupDone = true
-                        UserDefaults(suiteName: Sift.appGroup)?.set(true, forKey: "setupDone")
+                        UserDefaults(suiteName: Blotter.appGroup)?.set(true, forKey: "setupDone")
                     }
                 }
             }
-            .onChange(of: scenePhase, initial: true) { _, phase in
-                if phase == .active {
-                    removeOldActivity()
-                }
-            }
-            .alert("Couldn’t remove old activity", isPresented: Binding(
-                get: { cleanupError != nil }, set: { if !$0 { cleanupError = nil } }
-            )) { Button("OK") { cleanupError = nil } }
-            message: { Text(cleanupError ?? "") }
-        }
-    }
-
-    private func removeOldActivity() {
-        let manager = FileManager.default
-        var files = manager.urls(for: .documentDirectory, in: .userDomainMask)
-            .map { $0.appendingPathComponent("activity.jsonl") }
-        if let shared = manager.containerURL(forSecurityApplicationGroupIdentifier: Sift.appGroup) {
-            files.append(shared.appendingPathComponent("activity.jsonl"))
-        }
-        do {
-            try LegacyActivityCleanup(
-                accessGroup: Bundle.main.object(forInfoDictionaryKey: "SiftKeychainAccessGroup") as? String,
-                fileURLs: files
-            ).run(defaults: UserDefaults(suiteName: Sift.appGroup))
-            cleanupError = nil
-        } catch {
-            cleanupError = "Previously saved activity couldn’t be fully removed. Your keyword rules are unchanged. Cleanup will retry the next time you open Blotter."
         }
     }
 }
@@ -96,6 +67,12 @@ struct KeywordsView: View {
     var body: some View {
         NavigationStack {
             List {
+                Section("Enable Blotter") {
+                    Text("In iPhone Settings, go to Apps → Messages → Text Message Filter and choose Blotter.")
+                    Text("Adding keywords here doesn’t enable filtering. Check your selection in Settings.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
                 Section {
                     HStack {
                         TextField("Add keyword or phrase", text: $draft)
@@ -135,7 +112,7 @@ struct KeywordsView: View {
     private var trimmedDraft: String { draft.trimmingCharacters(in: .whitespacesAndNewlines) }
 
     private var matchingSummary: String {
-        let word = options.matchCase ? "\"Vote\"" : "\"vote\""
+        let word = "\"vote\""
         let caseNote = options.matchCase ? "only that exact capitalization" : "any capitalization"
         let accentNote = options.matchAccents ? "\"café\" ≠ \"cafe\"" : "\"café\" = \"cafe\""
         let wordNote = options.wholeWords ? "not inside \"devoted\"" : "also inside \"devoted\""

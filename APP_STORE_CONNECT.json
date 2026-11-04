@@ -1,11 +1,11 @@
 {
-  "prepared_on": "2026-11-03",
+  "prepared_on": "2026-11-04",
   "status": "Prepared locally; not created or submitted in App Store Connect",
   "format": "Copy-ready field values, not an App Store Connect API request",
   "account_prerequisites": [
     "Sign in to App Store Connect with active Developer Program membership and an appropriate role.",
     "Confirm exact app-name and SKU availability before creating records.",
-    "Register the app and extension bundle IDs and authorize Blotter's retained App Group and legacy cleanup Keychain group.",
+    "Register the app and extension bundle IDs and authorize Blotter's App Group group.com.droessmj.blotter.",
     "Supply and verify the private App Review contact telephone number. Confirm the prepared contact email receives Apple mail.",
     "Complete Apple's current age-rating, regional compliance, content-rights, privacy, and export-compliance questionnaires against the final builds."
   ],
@@ -34,18 +34,18 @@
       "app_privacy": {
         "privacy_policy_url": "https://apps.droessmj.com/day-in-ink/privacy.html",
         "prepared_answer": "Data Not Collected",
-        "basis": "The native app stores and processes habit data on-device, with no analytics SDK or developer-operated network service. User-selected exported files and Apple device backups are separately controlled. External website analytics is disclosed in the policy; the native app does not embed the support website. Confirm this remains true for the final uploaded build."
+        "basis": "The native app stores and processes habit data on-device, with no analytics SDK or developer-operated network service. User-selected exported files and Apple device backups are separately controlled. Support/privacy pages do not initialize analytics; the marketing home page uses Google Analytics as disclosed in the policy. The native app does not embed the website. Confirm this remains true for the final uploaded build."
       },
       "app_review": {
         "sign_in_required": false,
         "contact_first_name": "Michael",
         "contact_last_name": "Droessler",
         "contact_email": "app-support@droessmj.com",
-        "notes": "No account or sign-in is required. A fresh installation starts with editable habits and no fabricated check-in history. Tap + on Walk twice, relaunch, and verify progress persists. Open a pass/fail habit and test Passed, Failed, and Clear this day. Edit a habit's Daily default; unrecorded days use that default, including past days, while explicit check-ins remain unchanged. Switching tracking type preserves recorded days' original type, goal, and unit; clearing a recorded day adopts current settings. In Habits > About > Export and import, export a backup, modify progress, import the backup, review it, and confirm replacement. Import replaces all current data; cancellation and rejected files leave existing data unchanged. Version 1 backups ask for their original calendar before conversion; new backups use stable Gregorian day keys. Help & Support and Privacy Policy are accessible in About and the recovery flow."
+        "notes": "No account or sign-in is required. A fresh installation starts with editable habits and no fabricated check-in history. Tap + on Walk twice, wait for progress to update, relaunch, and verify persistence. Create a numeric habit with goal 1 and quick-add 0.1; ten additions complete it. Small nonzero amounts remain visible. Open a pass/fail habit and test Passed, Failed, and Clear this day. Changing its Daily default affects unrecorded days, including past days; explicit check-ins remain unchanged. Switching tracking type preserves recorded days' original type, goal, and unit; clearing adopts current settings. In Habits > About > Export and import, export a backup, modify progress, import it, review it, and confirm replacement. Cancellation and rejected files leave existing data unchanged. Only current version 3 backups are accepted; no older-format conversion exists. Gregorian start/day keys remain stable across timezone and calendar changes. Help & Support and Privacy Policy are accessible in About and recovery."
       },
       "testflight": {
         "feedback_email": "app-support@droessmj.com",
-        "what_to_test": "Daily numeric totals and small fractional values; pass/fail defaults and overrides; tracking-type changes with existing history; export/import, cancellation and restore; old-backup calendar migration; history after calendar preference changes and clock rollback; support/privacy links; VoiceOver and large text."
+        "what_to_test": "Decimal quick-add completion and small numeric display; localized numeric entry; pass/fail defaults and overrides; tracking-type changes with recorded history; export/import, cancellation and restore; rejection of unsupported backups without replacing data; history across timezone/calendar changes and clock rollback; rapid queued edits; support/privacy links; VoiceOver and maximum text size."
       },
       "pricing_and_availability": {
         "price": "Free",
@@ -79,24 +79,23 @@
       "app_privacy": {
         "privacy_policy_url": "https://apps.droessmj.com/blotter/privacy.html",
         "prepared_answer": "Data Not Collected",
-        "basis": "The native app and embedded filter process message bodies and rules on-device without sending them off-device or recording match history. Cleanup only deletes legacy data. External website analytics is disclosed separately; the native app does not embed the support website. Confirm the final app and extension privacy reports and all SDKs."
+        "basis": "The native app and embedded filter process message bodies and rules on-device without sending them off-device or recording match history. No legacy data or Keychain cleanup runs. Support/privacy pages do not initialize analytics; the marketing home page uses Google Analytics as disclosed separately. The native app does not embed the website. Confirm the final app and extension privacy reports and all SDKs."
       },
       "app_review": {
         "sign_in_required": false,
         "contact_first_name": "Michael",
         "contact_last_name": "Droessler",
         "contact_email": "app-support@droessmj.com",
-        "notes": "No account or sign-in is required. This app embeds the IdentityLookup message filter com.droessmj.blotter.filter; the extension does not have a separate store listing. In iPhone Settings > Apps > Messages, find text-message filtering and select Blotter. Return to Blotter and add pineapple with default whole-word matching. From an unknown sender not in Contacts, send an eligible SMS containing pineapple offer; it should be classified as Junk. A message containing hello there should receive no classification from Blotter. Do not use iMessage for this test. iOS controls message eligibility. No Activity tab or message/match history exists. Help & Support and Privacy Policy links are accessible during setup and on the Keywords screen. The new bundle ID is a separate installation from development builds using com.droessmj.sift; select the new Blotter filter explicitly. Shared preferences remain in the existing App Group, and the containing app retains only scoped deletion access to legacy Keychain data."
+        "notes": "No account or sign-in is required. This app embeds the IdentityLookup message filter com.droessmj.blotter.filter; the extension does not have a separate store listing. In iPhone Settings > Apps > Messages, find text-message filtering and select Blotter. Onboarding acknowledgment does not verify activation; enablement instructions remain on Keywords. Add pineapple with default whole-word matching. From an unknown sender not in Contacts, send an eligible SMS containing pineapple offer; it should be classified as Junk. A message containing hello there should receive no classification from Blotter. Do not use iMessage for this test. iOS controls message eligibility. No message/match history exists. Help & Support and Privacy Policy links are accessible during setup and on Keywords. Rules and options use only group.com.droessmj.blotter; there is no old-state migration or Keychain entitlement."
       },
       "testflight": {
         "feedback_email": "app-support@droessmj.com",
-        "what_to_test": "Filter setup and explicit selection of the new app; eligible unknown-sender SMS/MMS matches and nonmatches; case/accent/whole-word settings; rule edits reaching the extension; Contacts/iMessage exclusions; locked-device behavior after first unlock; legacy cleanup and preservation of shared rules; support/privacy links and large text."
+        "what_to_test": "Fresh onboarding and selecting Blotter in Messages settings; eligible unknown-sender SMS/MMS matches and nonmatches; case/accent/whole-word settings; rule edits reaching the extension; Contacts/iMessage exclusions; locked-device behavior after first unlock; rules/options persisting after relaunch; support/privacy links and maximum text size."
       },
       "capabilities": {
         "extension_bundle_id": "com.droessmj.blotter.filter",
-        "app_group": "group.com.droessmj.sift",
-        "legacy_keychain_access_group": "$(AppIdentifierPrefix)com.droessmj.sift.shared",
-        "identity_note": "New app identity, not an in-place update to com.droessmj.sift. Keep the same developer team and App Group to access shared rules. Private containers belonging to the old app/extension cannot be read or cleaned by the new identities; remove old installations separately after confirming rules and selecting the new filter."
+        "app_group": "group.com.droessmj.blotter",
+        "identity_note": "Current Blotter app and extension share only their own App Group. No prior app state or filter selection is migrated. No shared Keychain access is required."
       },
       "pricing_and_availability": {
         "price": "Free",

@@ -13,6 +13,8 @@ struct HabitEditor: View {
     @State private var target: String
     @State private var step: String
     @State private var unit: String
+    @State private var errorMessage: String?
+    @State private var saving = false
 
     private let emojis = ["🚶", "🔥", "💡", "🍞", "📖", "💧", "🧘", "🏃", "🌱", "💤", "🎨", "💪"]
 
@@ -28,8 +30,8 @@ struct HabitEditor: View {
         _unit = State(initialValue: habit?.unit ?? "min")
     }
 
-    private var targetValue: Double? { parseAmount(target) }
-    private var stepValue: Double? { parseAmount(step) }
+    private var targetValue: Decimal? { parseAmount(target) }
+    private var stepValue: Decimal? { parseAmount(step) }
     private var valid: Bool {
         !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
         name.trimmingCharacters(in: .whitespacesAndNewlines).unicodeScalars.count <= ArchiveLimits.maxNameScalars &&
@@ -74,7 +76,7 @@ struct HabitEditor: View {
                     HStack {
                         ForEach(HabitColor.allCases, id: \.self) { option in
                             Button { color = option } label: {
-                                Circle().fill(option.tint).frame(width: 30, height: 30)
+                                Circle().fill(color == option ? option.textColor : option.tint).frame(width: 30, height: 30)
                                     .overlay {
                                         if color == option {
                                             Image(systemName: "checkmark").font(.caption.bold()).foregroundStyle(.white)
@@ -123,6 +125,9 @@ struct HabitEditor: View {
                          ? (defaultPassed ? "Each day starts as passed. Mark a failure whenever needed."
                                           : "Each day starts as failed. Mark a pass when you complete it.")
                          : "Tap + on a habit to add progress. You can also enter an exact daily total. Goal changes apply to days you haven’t logged yet.")
+                    if kind == .progress {
+                        Text("Enter numbers using your region’s decimal separator, without grouping separators. Values must fit exact decimal precision.")
+                    }
                     if original != nil {
                         Text("Tracking changes apply to unrecorded days. Recorded days keep their original tracking type, goal, and unit. Clear a recorded day to use the new type.")
                         if kind == .checkIn {
@@ -137,33 +142,31 @@ struct HabitEditor: View {
             .navigationTitle(original == nil ? "A new beginning" : "Edit habit")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
+                ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() }.disabled(saving) }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(original == nil ? "Create" : "Save", action: save).bold().disabled(!valid)
+                    Button(original == nil ? "Create" : "Save", action: save).bold().disabled(!valid || saving)
                 }
             }
+            .disabled(saving)
+            .interactiveDismissDisabled(saving)
+            .mutationError($errorMessage)
         }
     }
 
     private func save() {
-        guard valid else { return }
+        guard valid, !saving else { return }
         let habit = Habit(id: original?.id ?? UUID(), name: name.trimmingCharacters(in: .whitespacesAndNewlines),
                           emoji: emoji, color: color, kind: kind, target: targetValue ?? 1,
                           step: stepValue ?? 1, unit: unit.trimmingCharacters(in: .whitespacesAndNewlines),
                           createdAt: original?.createdAt ?? Date(), isArchived: original?.isArchived ?? false,
-                          defaultPassed: defaultPassed)
-        if store.save(habit) { dismiss() }
+                          defaultPassed: defaultPassed, startDay: original?.startDay)
+        saving = true
+        Task {
+            defer { saving = false }
+            do {
+                try await store.save(habit)
+                dismiss()
+            } catch { errorMessage = error.localizedDescription }
+        }
     }
-}
-
-func parseAmount(_ text: String) -> Double? {
-    let normalized = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        .replacingOccurrences(of: Locale.current.decimalSeparator ?? ".", with: ".")
-    guard let value = Double(normalized), value.isFinite else { return nil }
-    return value
-}
-
-/// Double's shortest round-trippable representation, localized only for the decimal separator.
-func editableAmount(_ value: Double, locale: Locale = .current) -> String {
-    String(value).replacingOccurrences(of: ".", with: locale.decimalSeparator ?? ".")
 }

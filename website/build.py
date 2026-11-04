@@ -36,14 +36,24 @@ PAGES = {
     ),
 }
 
+HOME_ANALYTICS = """  <script async src="https://www.googletagmanager.com/gtag/js?id=G-4WHKJVZCYY"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag() { dataLayer.push(arguments); }
+    gtag('js', new Date());
+    gtag('config', 'G-4WHKJVZCYY');
+  </script>"""
+APP_CSP = "default-src 'none'; script-src 'none'; style-src 'self'; img-src 'self'; connect-src 'none'; base-uri 'none'; form-action 'none'; object-src 'none'"
+HOME_CSP = "default-src 'none'; script-src https://www.googletagmanager.com 'sha256-b1nGdmWmS7vNzHiBVJB7kr57A4VpyL8eJM4vsPjS+jA='; style-src 'self'; img-src 'self' https://www.googletagmanager.com https://*.google-analytics.com; connect-src https://www.googletagmanager.com https://*.google-analytics.com https://*.google.com; base-uri 'none'; form-action 'none'; object-src 'none'"
+
 SUPPORT_PRIVACY = """<section><h2>When you contact support</h2>
 <p>Issues and feature requests are handled in the app repository on GitHub. GitHub processes your account information and anything you submit under its own privacy policy. In a public repository, issues and comments are public: your username, message, and attachments can be read by others. Do not post private habit records, real texts, verification codes, or phone numbers.</p>
 <p>If you email instead, the developer receives your email address and the information you choose to include. This is used to answer your request, troubleshoot issues, and handle follow-up correspondence. Email is processed by the email providers involved in delivery and storage.</p>
 <p>Support correspondence is retained as needed to resolve your request and maintain relevant correspondence, or as required by law. You can use the contact below to ask about or request deletion of information you sent to support. Please do not send private habit records, real message contents, verification codes, or phone numbers unless necessary and discussed first.</p></section>"""
 
 WEBSITE_PRIVACY = """<section><h2>This support website</h2>
-<p>This website uses Google Analytics to understand visits and how its pages are used. It uses the same Google Analytics measurement ID as droessmj.com. Google receives information such as pages visited, browser and device details, and network information; analytics cookies can recognize returning browsers and may be shared across droessmj.com subdomains. This website analytics is separate from the iPhone apps, which do not include Google Analytics or send habit data, keyword rules, or message contents to it.</p>
-<p>Google processes analytics information under its <a href="https://policies.google.com/privacy">Privacy Policy</a>. Analytics retention and related settings are managed in the shared Google Analytics property. You can block analytics with browser controls or use the <a href="https://tools.google.com/dlpage/gaoptout">Google Analytics opt-out browser add-on</a> where supported. For questions or deletion requests about information sent through this website, use the privacy contact below. The site loads no third-party fonts or embedded media. Email links open your chosen mail app; no message is sent until you send it.</p>
+<p>The four Day in Ink and Blotter support and privacy pages do not load analytics or set analytics cookies. The Pocket Almanac home page does load Google Analytics, using the same measurement ID as droessmj.com. On the home page, Google receives information such as pages visited, browser and device details, and network information; analytics cookies can recognize returning browsers and may be shared across droessmj.com subdomains. Existing parent-domain cookies from a visit to the home page or another droessmj.com page may remain in your browser when you visit these support and privacy pages; these pages do not clear them. Website analytics is separate from the iPhone apps, which do not include Google Analytics or send habit data, keyword rules, or message contents to it.</p>
+<p>Google processes home-page analytics information under its <a href="https://policies.google.com/privacy">Privacy Policy</a>. Analytics retention and related settings are managed in the shared Google Analytics property. You can block analytics or manage existing cookies with browser controls, or use the <a href="https://tools.google.com/dlpage/gaoptout">Google Analytics opt-out browser add-on</a> where supported. For questions or deletion requests about information sent through the home page, use the privacy contact below. The site loads no third-party fonts or embedded media. Email links open your chosen mail app; no message is sent until you send it.</p>
 <p>The website is hosted on GitHub Pages. GitHub logs visitors’ IP addresses for security purposes. This is separate from data processed by the iPhone app. See <a href="https://docs.github.com/en/pages/getting-started-with-github-pages/what-is-github-pages#data-collection">GitHub Pages data collection</a> and the <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement">GitHub Privacy Statement</a>.</p></section>"""
 
 
@@ -56,6 +66,8 @@ class PageParser(HTMLParser):
         self.errors = []
         self.has_language = False
         self.has_viewport = False
+        self.scripts = []
+        self.csp = []
 
     def handle_starttag(self, tag, attrs):
         attrs = dict(attrs)
@@ -63,6 +75,10 @@ class PageParser(HTMLParser):
             self.has_language = attrs.get("lang") == "en"
         if tag == "meta" and attrs.get("name") == "viewport":
             self.has_viewport = True
+        if tag == "meta" and attrs.get("http-equiv", "").lower() == "content-security-policy":
+            self.csp.append(attrs.get("content", ""))
+        if tag == "script":
+            self.scripts.append(attrs.get("src"))
         if tag == "h1":
             self.h1_count += 1
         if "id" in attrs:
@@ -126,6 +142,8 @@ def render(config):
         content = replace_tokens((SOURCE / name).read_text(), values)
         tokens = dict(values, content=content, title=escape(title),
                       description=escape(description), root=root, theme=app,
+                      analytics=HOME_ANALYTICS if app == "home" else "",
+                      content_security_policy=HOME_CSP if app == "home" else APP_CSP,
                       theme_color="#f4f0e7" if app != "blotter" else "#f2f2f7",
                       favicon=favicon, icon_type="image/svg+xml" if app == "home" else "image/png",
                       app_badge="" if app == "home" else f'<img class="page-app-icon" src="{root + app_icon}" width="72" height="72" alt="">')
@@ -135,7 +153,7 @@ def render(config):
         files["assets/" + name] = (SOURCE / "assets" / name).read_bytes()
     for app, icon in {
         "day-in-ink": "apps/DayInInk/Assets.xcassets/AppIcon.appiconset/icon-1024.png",
-        "blotter": "apps/Sift/App/Assets.xcassets/AppIcon.appiconset/icon-1024.png",
+        "blotter": "apps/Blotter/App/Assets.xcassets/AppIcon.appiconset/icon-1024.png",
     }.items():
         files["assets/" + app + "-icon.png"] = (HERE.parent / icon).read_bytes()
     return files
@@ -152,6 +170,16 @@ def validate(files):
             parser.errors.append("expected one h1")
         if not parser.has_language or not parser.has_viewport:
             parser.errors.append("missing language or mobile viewport")
+        if name == "index.html":
+            if parser.scripts != ["https://www.googletagmanager.com/gtag/js?id=G-4WHKJVZCYY", None]:
+                parser.errors.append("home must load the Google tag and its initialization only")
+            if HOME_ANALYTICS not in files[name].decode() or parser.csp != [HOME_CSP]:
+                parser.errors.append("home analytics initialization or CSP is missing or changed")
+        else:
+            if parser.scripts:
+                parser.errors.append("support/privacy pages must not load or initialize scripts")
+            if parser.csp != [APP_CSP]:
+                parser.errors.append("support/privacy CSP must block scripts and connections without Google allowlists")
         errors.extend(name + ": " + error for error in parser.errors)
     for name, parser in pages.items():
         for link in parser.links:

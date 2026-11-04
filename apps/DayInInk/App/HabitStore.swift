@@ -6,45 +6,64 @@ import Observation
 final class HabitStore {
     private(set) var archive = HabitArchive()
     private(set) var ready = false
-    private(set) var needsLegacyCalendar = false
+    private(set) var isLoading = true
     var errorMessage: String?
     private let file: ArchiveFile
+    @ObservationIgnored private var pendingOperation: Task<Void, Never>?
 
-    init() {
-        var directory = URL.applicationSupportDirectory.appendingPathComponent("DayInInk", isDirectory: true)
-        #if DEBUG
-        if let testID = ProcessInfo.processInfo.environment["DAYININK_TEST_STORE"], UUID(uuidString: testID) != nil {
-            directory = URL.temporaryDirectory.appendingPathComponent("DayInInkTests-\(testID)", isDirectory: true)
+    init(file: ArchiveFile? = nil) {
+        if let file {
+            self.file = file
+        } else {
+            var directory = URL.applicationSupportDirectory.appendingPathComponent("DayInInk", isDirectory: true)
+            #if DEBUG
+            if let testID = ProcessInfo.processInfo.environment["DAYININK_TEST_STORE"], UUID(uuidString: testID) != nil {
+                directory = URL.temporaryDirectory.appendingPathComponent("DayInInkTests-\(testID)", isDirectory: true)
+            }
+            #endif
+            self.file = ArchiveFile(url: directory.appendingPathComponent("habits.json"))
         }
-        #endif
-        file = ArchiveFile(url: directory.appendingPathComponent("habits.json"))
-        load()
+        pendingOperation = Task { await readFromDisk() }
     }
 
     var activeHabits: [Habit] { archive.habits.filter { !$0.isArchived } }
 
-    /// Called only after the user confirms replacement of all data. Publish in memory after saving.
-    func restore(_ imported: HabitArchive) throws {
-        try file.save(imported)
-        archive = imported
-        ready = true
-        errorMessage = nil
+    // Queue reads and writes in submission order. Each edit starts from the last successfully
+    // published archive, not a snapshot captured before an earlier save finishes.
+    private func perform<T: Sendable>(_ operation: @escaping @MainActor () async throws -> T) async throws -> T {
+        let previous = pendingOperation
+        let task = Task { @MainActor in
+            await previous?.value
+            return try await operation()
+        }
+        pendingOperation = Task {
+            // This barrier carries ordering only; the caller receives the actual result/error.
+            _ = await task.result
+        }
+        return try await task.value
     }
 
-    func load() {
-        needsLegacyCalendar = false
+    func load() async {
         do {
-            if let saved = try file.load() {
-                archive = saved
-            } else {
+            try await perform { await self.readFromDisk() }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private func readFromDisk() async {
+        isLoading = true
+        defer { isLoading = false }
+        let file = file
+        do {
+            let saved = try await Task.detached(priority: .userInitiated) {
+                if let saved = try file.load() { return saved }
                 let initial = HabitArchive.starterHabits()
                 try file.save(initial)
-                archive = initial
-            }
+                return initial
+            }.value
+            archive = saved
             ready = true
-        } catch ArchiveValidationError.legacyCalendarRequired {
-            ready = false
-            needsLegacyCalendar = true
             errorMessage = nil
         } catch {
             ready = false
@@ -52,42 +71,40 @@ final class HabitStore {
         }
     }
 
-    /// Old archives did not record their calendar. Convert only after the user identifies it.
-    func migrateLegacyArchive(using calendar: Calendar) {
-        do {
-            guard let saved = try file.load(legacyCalendar: calendar) else {
-                load()
-                return
-            }
-            try file.save(saved)
-            archive = saved
-            ready = true
-            needsLegacyCalendar = false
-            errorMessage = nil
-        } catch {
-            errorMessage = "Your saved file has been kept. \(error.localizedDescription)"
+    func snapshot() async throws -> HabitArchive {
+        try await perform {
+            guard self.ready else { throw HabitStoreError.notReady }
+            return self.archive
         }
     }
 
-    @discardableResult
-    private func commit(_ change: (inout HabitArchive) -> Void) -> Bool {
-        guard ready else { return false }
-        var updated = archive
-        change(&updated)
-        do {
-            try file.save(updated)
-            archive = updated
-            return true
-        } catch {
-            errorMessage = "Your change couldn’t be saved. Please try again. \(error.localizedDescription)"
-            return false
+    /// Publish only after atomic persistence succeeds. Failed changes never replace memory or disk.
+    private func commit(_ change: @escaping (inout HabitArchive) throws -> Void) async throws {
+        try await perform {
+            guard self.ready else { throw HabitStoreError.notReady }
+            var updated = self.archive
+            try change(&updated)
+            let snapshot = updated
+            let file = self.file
+            try await Task.detached(priority: .userInitiated) { try file.save(snapshot) }.value
+            self.archive = updated
         }
     }
 
-    @discardableResult
-    func save(_ habit: Habit) -> Bool {
-        guard habit.isValid else { return false }
-        return commit { archive in
+    /// Called only after confirmation. Recovery imports also work when the current file won't load.
+    func restore(_ imported: HabitArchive) async throws {
+        try await perform {
+            let file = self.file
+            try await Task.detached(priority: .userInitiated) { try file.save(imported) }.value
+            self.archive = imported
+            self.ready = true
+            self.errorMessage = nil
+        }
+    }
+
+    func save(_ habit: Habit) async throws {
+        guard habit.isValid else { throw ArchiveValidationError.invalidData }
+        try await commit { archive in
             if let index = archive.habits.firstIndex(where: { $0.id == habit.id }) {
                 archive.habits[index] = habit
             } else {
@@ -98,37 +115,69 @@ final class HabitStore {
 
     func entry(_ habit: Habit, on date: Date) -> HabitEntry? { archive.effectiveEntry(for: habit, on: date) }
 
-    @discardableResult
-    func record(_ habit: Habit, on date: Date, value: Double? = nil, checkIn: CheckIn? = nil) -> Bool {
-        commit { $0.record(habit, on: date, value: value, checkIn: checkIn) }
-    }
-
-    @discardableResult
-    func clear(_ habit: Habit, on date: Date) -> Bool {
-        commit { $0.clear(habit, on: date) }
-    }
-
-    func quickLog(_ habit: Habit, on date: Date) {
-        let existing = entry(habit, on: date)
-        if (existing?.kind ?? habit.kind) == .checkIn {
-            if existing?.checkIn == .passed { _ = record(habit, on: date, checkIn: .failed) }
-            else { _ = record(habit, on: date, checkIn: .passed) }
-        } else {
-            _ = record(habit, on: date, value: (existing?.value ?? 0) + habit.step)
+    func record(_ habit: Habit, on date: Date, value: Decimal? = nil, checkIn: CheckIn? = nil) async throws {
+        let calendar = Calendar.current
+        try await commit { archive in
+            guard archive.record(habit, on: date, value: value, checkIn: checkIn, calendar: calendar) else {
+                throw HabitStoreError.invalidRecord
+            }
         }
     }
 
-    func archiveHabit(_ habit: Habit) {
-        var updated = habit
-        updated.isArchived.toggle()
-        save(updated)
+    func clear(_ habit: Habit, on date: Date) async throws {
+        let calendar = Calendar.current
+        try await commit { archive in
+            guard archive.entry(for: habit, on: date, calendar: calendar) != nil else { throw HabitStoreError.invalidRecord }
+            archive.clear(habit, on: date, calendar: calendar)
+        }
     }
 
-    @discardableResult
-    func delete(_ habit: Habit) -> Bool {
-        commit {
-            $0.habits.removeAll { $0.id == habit.id }
-            $0.entries.removeAll { $0.habitID == habit.id }
+    func quickLog(_ habit: Habit, on date: Date) async throws {
+        let calendar = Calendar.current
+        try await commit { archive in
+            guard let current = archive.habits.first(where: { $0.id == habit.id }) else {
+                throw HabitStoreError.missingHabit
+            }
+            let existing = archive.effectiveEntry(for: current, on: date, calendar: calendar)
+            let recorded: Bool
+            if (existing?.kind ?? current.kind) == .checkIn {
+                recorded = archive.record(current, on: date, checkIn: existing?.checkIn == .passed ? .failed : .passed,
+                                          calendar: calendar)
+            } else {
+                let total = try HabitAmount.adding(existing?.value ?? 0, current.step)
+                recorded = archive.record(current, on: date, value: total, calendar: calendar)
+            }
+            guard recorded else { throw HabitStoreError.invalidRecord }
+        }
+    }
+
+    func archiveHabit(_ habit: Habit) async throws {
+        let archived = !habit.isArchived
+        try await commit { archive in
+            guard let index = archive.habits.firstIndex(where: { $0.id == habit.id }) else {
+                throw HabitStoreError.missingHabit
+            }
+            archive.habits[index].isArchived = archived
+        }
+    }
+
+    func delete(_ habit: Habit) async throws {
+        try await commit { archive in
+            guard archive.habits.contains(where: { $0.id == habit.id }) else { throw HabitStoreError.missingHabit }
+            archive.habits.removeAll { $0.id == habit.id }
+            archive.entries.removeAll { $0.habitID == habit.id }
+        }
+    }
+}
+
+private enum HabitStoreError: LocalizedError {
+    case notReady, invalidRecord, missingHabit
+
+    var errorDescription: String? {
+        switch self {
+        case .notReady: "Your habits aren’t available yet. Try opening them again."
+        case .invalidRecord: "This check-in couldn’t be saved. Choose a day from the habit’s start date through today and enter a valid result."
+        case .missingHabit: "This habit is no longer available."
         }
     }
 }

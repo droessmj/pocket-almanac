@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import HabitKit
 
 @main
@@ -32,9 +33,11 @@ struct RootView: View {
     @State private var tab = AppTab.today
     @State private var addingHabit = false
     @State private var showDataTransfer = false
+    @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @State private var calendar = habitCalendar()
 
     var body: some View {
-        @Bindable var store = store
         Group {
             if store.ready {
                 NavigationStack {
@@ -50,16 +53,15 @@ struct RootView: View {
                     .safeAreaInset(edge: .bottom, spacing: 0) { tabBar }
                     .navigationDestination(for: Habit.self) { habit in HabitDetailView(habitID: habit.id) }
                 }
-            } else if store.needsLegacyCalendar {
-                LegacyCalendarPicker(title: "Upgrade your saved history",
-                                     onChoose: store.migrateLegacyArchive)
+            } else if store.isLoading {
+                ProgressView("Opening your habits…").frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 ContentUnavailableView {
                     Label("Couldn’t open your habits", systemImage: "externaldrive.badge.exclamationmark")
                 } description: {
-                    Text("Your saved data has been kept. Try opening it again.")
+                    Text(store.errorMessage ?? "Your saved data has been kept. Try opening it again.")
                 } actions: {
-                    Button("Try again") { store.load() }.buttonStyle(.borderedProminent)
+                    Button("Try again") { Task { await store.load() } }.buttonStyle(.borderedProminent)
                     Button("Import a backup") { showDataTransfer = true }
                     Link("Help & Support", destination: URL(string: "https://apps.droessmj.com/day-in-ink/support.html")!)
                     Link("Privacy Policy", destination: URL(string: "https://apps.droessmj.com/day-in-ink/privacy.html")!)
@@ -67,6 +69,15 @@ struct RootView: View {
             }
         }
         .foregroundStyle(DayInInkTheme.ink)
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { calendar = habitCalendar() }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.significantTimeChangeNotification)) { _ in
+            calendar = habitCalendar()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name.NSSystemTimeZoneDidChange)) { _ in
+            calendar = habitCalendar()
+        }
         .sheet(isPresented: $addingHabit) { HabitEditor() }
         .sheet(isPresented: $showDataTransfer) {
             NavigationStack {
@@ -74,28 +85,40 @@ struct RootView: View {
                     .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { showDataTransfer = false } } }
             }
         }
-        .alert("Couldn’t save or load", isPresented: Binding(
-            get: { store.errorMessage != nil },
-            set: { if !$0 { store.errorMessage = nil } }
-        )) { Button("OK") { store.errorMessage = nil } }
-        message: { Text(store.errorMessage ?? "Please try again.") }
+        .environment(\.calendar, calendar)
     }
 
     private var tabBar: some View {
         HStack(spacing: 4) {
-            ForEach(AppTab.allCases, id: \.self) { item in
-                Button { tab = item } label: {
-                    VStack(spacing: 5) {
-                        Image(systemName: item.icon).font(.system(size: 20, weight: .semibold))
-                        Text(item.rawValue).font(.system(size: 10, weight: .semibold))
+            if dynamicTypeSize.isAccessibilitySize {
+                Menu {
+                    ForEach(AppTab.allCases, id: \.self) { item in
+                        Button { tab = item } label: { Label(item.rawValue, systemImage: item.icon) }
+                            .accessibilityIdentifier("tab-\(item.rawValue.lowercased())")
                     }
-                    .foregroundStyle(tab == item ? DayInInkTheme.accent : DayInInkTheme.secondary)
-                    .frame(maxWidth: .infinity).frame(minHeight: 54)
-                    .background(tab == item ? DayInInkTheme.accent.opacity(0.08) : .clear,
-                                in: RoundedRectangle(cornerRadius: 8))
+                } label: {
+                    Label(tab.rawValue, systemImage: tab.icon)
+                        .font(.headline)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-                .accessibilityAddTraits(tab == item ? .isSelected : [])
-                .accessibilityIdentifier("tab-\(item.rawValue.lowercased())")
+                .accessibilityLabel("Navigate, \(tab.rawValue) selected")
+                .accessibilityIdentifier("tab-navigation")
+            } else {
+                ForEach(AppTab.allCases, id: \.self) { item in
+                    Button { tab = item } label: {
+                        VStack(spacing: 5) {
+                            Image(systemName: item.icon).font(.system(size: 20, weight: .semibold))
+                            Text(item.rawValue).font(.caption2.weight(.semibold))
+                        }
+                        .foregroundStyle(tab == item ? DayInInkTheme.accent : DayInInkTheme.secondary)
+                        .frame(maxWidth: .infinity).frame(minHeight: 54)
+                        .background(tab == item ? DayInInkTheme.accent.opacity(0.08) : .clear,
+                                    in: RoundedRectangle(cornerRadius: 8))
+                    }
+                    .accessibilityAddTraits(tab == item ? .isSelected : [])
+                    .accessibilityIdentifier("tab-\(item.rawValue.lowercased())")
+                }
             }
             Button { addingHabit = true } label: {
                 Image(systemName: "plus").font(.system(size: 21, weight: .semibold))
@@ -108,7 +131,7 @@ struct RootView: View {
 
 
         }
-        .padding(.horizontal, 20).padding(.vertical, 10)
+        .padding(.horizontal, 12).padding(.vertical, 10)
         .background { PaperSurface().ignoresSafeArea() }
         .overlay(alignment: .top) {
             Rectangle().fill(DayInInkTheme.ink.opacity(0.1)).frame(height: 1)

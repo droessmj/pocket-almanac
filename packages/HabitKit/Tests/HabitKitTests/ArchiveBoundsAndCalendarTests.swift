@@ -15,7 +15,74 @@ final class ArchiveBoundsAndCalendarTests: XCTestCase {
 
     private func habit(createdAt: Date? = nil, kind: HabitKind = .checkIn, defaultPassed: Bool = true) -> Habit {
         Habit(name: "Read", emoji: "📚", color: .mint, kind: kind, target: 20, step: 5,
-              unit: "pages", createdAt: createdAt ?? date(), defaultPassed: defaultPassed)
+              unit: "pages", createdAt: createdAt ?? date(), defaultPassed: defaultPassed, calendar: calendar)
+    }
+
+    func testTimezoneTravelKeepsStartDayAndRecordedKeysInBothDirections() throws {
+        for (originZone, destinationZone, hour) in [
+            ("Asia/Tokyo", "America/Los_Angeles", 0),
+            ("America/Los_Angeles", "Asia/Tokyo", 23)
+        ] {
+            var origin = Calendar(identifier: .gregorian)
+            origin.timeZone = try XCTUnwrap(TimeZone(identifier: originZone))
+            var destination = Calendar(identifier: .buddhist)
+            destination.timeZone = try XCTUnwrap(TimeZone(identifier: destinationZone))
+            let created = try XCTUnwrap(origin.date(from: DateComponents(year: 2026, month: 3, day: 2,
+                                                                        hour: hour, minute: 30)))
+            let habit = Habit(name: "Travel", emoji: "🌏", color: .blue, kind: .checkIn,
+                              createdAt: created, calendar: origin)
+            let key = HabitDay(created, calendar: origin)
+            XCTAssertNotEqual(key, HabitDay(created, calendar: destination))
+            let localStart = try XCTUnwrap(habit.startDate(calendar: destination))
+            let localCalendar = HabitDay.localCalendar(destination)
+            let now = try XCTUnwrap(localCalendar.date(byAdding: .day, value: 2, to: localStart))
+            let before = try XCTUnwrap(localCalendar.date(byAdding: .day, value: -1, to: localStart))
+            var archive = HabitArchive(habits: [habit])
+            XCTAssertEqual(habit.createdAt, created)
+            XCTAssertEqual(HabitDay(localStart, calendar: destination), key)
+            XCTAssertNil(archive.effectiveEntry(for: habit, on: before, calendar: destination, now: now))
+            XCTAssertFalse(archive.record(habit, on: before, checkIn: .passed, calendar: destination, now: now))
+            XCTAssertEqual(archive.streak(for: habit, through: before, calendar: destination, now: now), 0)
+            XCTAssertTrue(archive.samples(for: habit, days: 4, through: before, calendar: destination).isEmpty)
+            XCTAssertNil(habit.historyDateRange(through: before, calendar: destination))
+            XCTAssertEqual(habit.historyDateRange(through: now, calendar: destination)?.lowerBound, localStart)
+            XCTAssertEqual(archive.streak(for: habit, through: now, calendar: destination, now: now), 3)
+            XCTAssertEqual(archive.samples(for: habit, days: 4, through: now, calendar: destination).count, 3)
+            XCTAssertTrue(archive.record(habit, on: created, checkIn: .failed, calendar: origin, now: now))
+            let recorded = try XCTUnwrap(archive.entry(for: habit, on: localStart, calendar: destination))
+            XCTAssertEqual(recorded.day, key)
+            XCTAssertEqual(recorded.checkIn, .failed)
+            XCTAssertTrue(archive.record(habit, on: localStart, checkIn: .passed, calendar: destination, now: now))
+            XCTAssertEqual(archive.entries.count, 1)
+            XCTAssertEqual(archive.entry(for: habit, on: created, calendar: origin)?.id, recorded.id)
+            XCTAssertEqual(archive.effectiveEntry(for: habit, on: localStart, calendar: destination, now: now)?.checkIn,
+                           .passed)
+            let decoded = try ArchiveFile.decode(ArchiveFile.encode(archive))
+            XCTAssertEqual(decoded, archive)
+            XCTAssertEqual(decoded.habits[0].startDay, key)
+            XCTAssertEqual(decoded.entries[0].day, key)
+        }
+    }
+
+    func testHistoryRemainsEditableWhenTimezoneSkipsTheStartDay() throws {
+        var origin = Calendar(identifier: .gregorian)
+        origin.timeZone = TimeZone(secondsFromGMT: 0)!
+        let created = try XCTUnwrap(origin.date(from: DateComponents(year: 2011, month: 12, day: 30, hour: 12)))
+        let habit = Habit(name: "Travel", emoji: "🌏", color: .blue, kind: .checkIn,
+                          createdAt: created, calendar: origin)
+        var destination = Calendar(identifier: .gregorian)
+        destination.timeZone = try XCTUnwrap(TimeZone(identifier: "Pacific/Apia"))
+        let now = try XCTUnwrap(destination.date(from: DateComponents(year: 2012, month: 1, day: 2, hour: 12)))
+        let expectedStart = try XCTUnwrap(destination.date(from: DateComponents(year: 2011, month: 12, day: 31)))
+        XCTAssertNil(habit.startDate(calendar: destination))
+        let range = try XCTUnwrap(habit.historyDateRange(through: now, calendar: destination))
+        XCTAssertEqual(range.lowerBound, expectedStart)
+        XCTAssertEqual(range.upperBound, now)
+        var archive = HabitArchive(habits: [habit])
+        XCTAssertTrue(archive.record(habit, on: range.lowerBound, checkIn: .passed,
+                                     calendar: destination, now: now))
+        XCTAssertEqual(archive.entry(for: habit, on: expectedStart, calendar: destination)?.checkIn, .passed)
+        XCTAssertEqual(habit.startDay, HabitDay(created, calendar: origin))
     }
 
     private func assertResourceLimit(_ operation: () throws -> Void, file: StaticString = #filePath, line: UInt = #line) {
@@ -53,79 +120,6 @@ final class ArchiveBoundsAndCalendarTests: XCTestCase {
                        HabitDay(date(2026, 11, 1, hour: 23), calendar: calendar))
     }
 
-    func testLegacyConversionRequiresChoiceAndPreservesSnapshotsAndIDs() throws {
-        let originalHabit = habit(kind: .progress)
-        var original = HabitArchive(habits: [originalHabit])
-        original.record(originalHabit, on: date(2026, 3, 8), value: 25, calendar: calendar, now: date(2026, 3, 9))
-        original.habits[0].target = 40
-        original.habits[0].kind = .checkIn
-        var object = try XCTUnwrap(JSONSerialization.jsonObject(with: ArchiveFile.encode(original)) as? [String: Any])
-        object["version"] = 1
-        var entries = try XCTUnwrap(object["entries"] as? [[String: Any]])
-        entries[0]["day"] = ["year": 2569, "month": 3, "day": 8]
-        object["entries"] = entries
-        var habits = try XCTUnwrap(object["habits"] as? [[String: Any]])
-        habits[0].removeValue(forKey: "defaultPassed")
-        object["habits"] = habits
-        let legacy = try JSONSerialization.data(withJSONObject: object)
-        XCTAssertThrowsError(try ArchiveFile.decode(legacy)) { error in
-            guard case ArchiveValidationError.legacyCalendarRequired = error else { return XCTFail("\(error)") }
-        }
-        var buddhist = Calendar(identifier: .buddhist)
-        buddhist.timeZone = calendar.timeZone
-        let migrated = try ArchiveFile.decode(legacy, legacyCalendar: buddhist)
-        XCTAssertEqual(migrated, original)
-        XCTAssertEqual(migrated.version, 2)
-        XCTAssertEqual(migrated.entries[0].target, 20)
-        XCTAssertEqual(migrated.entries[0].kind, .progress)
-        XCTAssertTrue(migrated.habits[0].defaultPassed)
-        XCTAssertEqual(try ArchiveFile.decode(ArchiveFile.encode(migrated)), migrated)
-
-        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        defer { try? FileManager.default.removeItem(at: directory) }
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        let file = ArchiveFile(url: directory.appendingPathComponent("archive.json"))
-        try legacy.write(to: file.url)
-        XCTAssertThrowsError(try file.load())
-        XCTAssertEqual(try file.load(legacyCalendar: buddhist), original)
-        XCTAssertEqual(try Data(contentsOf: file.url), legacy, "Reading a migration must not rewrite user bytes")
-        try file.save(migrated)
-        XCTAssertEqual(try file.load(), original)
-    }
-
-    func testLegacyRejectsNormalizedImpossibleDayWithoutChangingSource() throws {
-        var object: [String: Any]
-        let habit = habit()
-        var archive = HabitArchive(habits: [habit])
-        archive.record(habit, on: date(), checkIn: .passed, calendar: calendar, now: date())
-        object = try XCTUnwrap(JSONSerialization.jsonObject(with: ArchiveFile.encode(archive)) as? [String: Any])
-        object["version"] = 1
-        var entries = try XCTUnwrap(object["entries"] as? [[String: Any]])
-        entries[0]["day"] = ["year": 2026, "month": 2, "day": 30]
-        object["entries"] = entries
-        XCTAssertThrowsError(try ArchiveFile.decode(JSONSerialization.data(withJSONObject: object), legacyCalendar: calendar))
-    }
-
-    func testAmbiguousLegacyCalendarsRejectWithoutTouchingOriginalBytes() throws {
-        let habit = habit()
-        var archive = HabitArchive(habits: [habit])
-        archive.record(habit, on: date(), checkIn: .passed, calendar: calendar, now: date())
-        archive.version = 1
-        let bytes = try JSONEncoder().encode(archive)
-        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        defer { try? FileManager.default.removeItem(at: directory) }
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        let file = ArchiveFile(url: directory.appendingPathComponent("archive.json"))
-        try bytes.write(to: file.url)
-        for identifier in [Calendar.Identifier.japanese, .chinese, .republicOfChina, .ethiopicAmeteMihret] {
-            var source = Calendar(identifier: identifier)
-            source.timeZone = calendar.timeZone
-            XCTAssertThrowsError(try file.load(legacyCalendar: source)) { error in
-                guard case ArchiveValidationError.ambiguousLegacyCalendar = error else { return XCTFail("\(error)") }
-            }
-            XCTAssertEqual(try Data(contentsOf: file.url), bytes)
-        }
-    }
 
     func testDataAndURLByteLimitsIncludeExactBoundaryAndRejectExcess() throws {
         let encoded = try ArchiveFile.encode(HabitArchive())
@@ -186,13 +180,16 @@ final class ArchiveBoundsAndCalendarTests: XCTestCase {
         let lower = utc.date(from: DateComponents(year: 1900, month: 1, day: 1))!
         let upper = utc.date(from: DateComponents(year: 10000, month: 1, day: 1))!
         for valid in [lower, upper.addingTimeInterval(-1), date(2099)] {
-            let archive = HabitArchive(habits: [habit(createdAt: valid)])
+            let habit = Habit(name: "Bounds", emoji: "📚", color: .mint, kind: .checkIn,
+                              createdAt: valid, calendar: utc)
+            let archive = HabitArchive(habits: [habit])
             XCTAssertEqual(try ArchiveFile.decode(ArchiveFile.encode(archive)), archive)
         }
         for invalid in [lower.addingTimeInterval(-1), upper, Date(timeIntervalSinceReferenceDate: .infinity)] {
             XCTAssertThrowsError(try ArchiveFile.encode(HabitArchive(habits: [habit(createdAt: invalid)])))
         }
-        let habit = habit(createdAt: lower)
+        let habit = Habit(name: "Bounds", emoji: "📚", color: .mint, kind: .checkIn,
+                          createdAt: lower, calendar: utc)
         for valid in [lower, upper.addingTimeInterval(-1)] {
             let entry = HabitEntry(habit: habit, date: valid, checkIn: .passed, calendar: utc)
             let archive = HabitArchive(habits: [habit], entries: [entry])

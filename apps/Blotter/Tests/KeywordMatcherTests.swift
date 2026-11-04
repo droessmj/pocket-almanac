@@ -1,5 +1,5 @@
 import XCTest
-@testable import SiftCore
+@testable import BlotterCore
 
 final class KeywordMatcherTests: XCTestCase {
     func testDefaultMatchingIgnoresCaseAndAccents() {
@@ -17,6 +17,16 @@ final class KeywordMatcherTests: XCTestCase {
         var options = MatchOptions()
         options.wholeWords = false
         XCTAssertEqual(KeywordMatcher.firstMatch(in: "devoted", keywords: ["vote"], options: options), "vote")
+    }
+
+    func testCaseSensitiveSubstringMatchesTheDisplayedExample() {
+        let options = MatchOptions(matchCase: true, matchAccents: false, wholeWords: false)
+        XCTAssertEqual(KeywordMatcher.firstMatch(in: "devoted", keywords: ["vote"], options: options), "vote")
+        XCTAssertNil(KeywordMatcher.firstMatch(in: "devoted", keywords: ["Vote"], options: options))
+    }
+
+    func testWholeWordSearchContinuesAfterAnEmbeddedMatch() {
+        XCTAssertEqual(KeywordMatcher.firstMatch(in: "devoted? vote!", keywords: ["vote"], options: MatchOptions()), "vote")
     }
 
     func testCaseAndAccentOptionsAreIndependent() {

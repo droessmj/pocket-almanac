@@ -9,9 +9,10 @@ final class ArchiveTransferTests: XCTestCase {
         let created = calendar.date(from: DateComponents(year: 2026, month: 3, day: 1, hour: 12))!
         let logged = calendar.date(from: DateComponents(year: 2026, month: 3, day: 4, hour: 12))!
         var progress = Habit(name: "Read 📚", emoji: "📖", color: .mint, kind: .progress,
-                             target: 20, step: 5, unit: "pages", createdAt: created, isArchived: true)
+                             target: 20, step: 5, unit: "pages", createdAt: created, isArchived: true,
+                             calendar: calendar)
         let checkIn = Habit(name: "No snacks", emoji: "🍎", color: .rose, kind: .checkIn,
-                            createdAt: created, defaultPassed: false)
+                            createdAt: created, defaultPassed: false, calendar: calendar)
         var result = HabitArchive(habits: [progress, checkIn])
         result.record(progress, on: logged, value: 25, calendar: calendar)
         result.record(checkIn, on: logged, checkIn: .failed, calendar: calendar)
@@ -19,6 +20,55 @@ final class ArchiveTransferTests: XCTestCase {
         progress.unit = "chapters"
         result.habits[0] = progress
         return result
+    }
+
+    func testOnlyVersionThreeAndCompleteCurrentHabitSchemaAreAccepted() throws {
+        let archive = backup()
+        XCTAssertEqual(archive.version, 3)
+        let original = try XCTUnwrap(JSONSerialization.jsonObject(with: ArchiveFile.encode(archive)) as? [String: Any])
+        for version in [-1, 0, 1, 2, 4, 99] {
+            var object = original
+            object["version"] = version
+            let data = try JSONSerialization.data(withJSONObject: object)
+            XCTAssertThrowsError(try ArchiveFile.decode(data)) { error in
+                guard case ArchiveValidationError.unsupportedVersion = error else { return XCTFail("\(error)") }
+            }
+            XCTAssertThrowsError(try JSONDecoder().decode(HabitArchive.self, from: data))
+            var invalid = archive
+            invalid.version = version
+            XCTAssertThrowsError(try ArchiveFile.encode(invalid))
+        }
+        for field in ["startDay", "defaultPassed"] {
+            var object = original
+            var habits = try XCTUnwrap(object["habits"] as? [[String: Any]])
+            habits[0].removeValue(forKey: field)
+            object["habits"] = habits
+            XCTAssertThrowsError(try ArchiveFile.decode(JSONSerialization.data(withJSONObject: object)))
+        }
+    }
+
+    func testInvalidStartDaysAndPreStartEntriesAreRejected() throws {
+        let archive = backup()
+        let original = try XCTUnwrap(JSONSerialization.jsonObject(with: ArchiveFile.encode(archive)) as? [String: Any])
+        for day in [
+            ["year": 2026, "month": 2, "day": 30],
+            ["year": 2026, "month": 13, "day": 1],
+            ["year": 1899, "month": 12, "day": 31]
+        ] {
+            var object = original
+            var habits = try XCTUnwrap(object["habits"] as? [[String: Any]])
+            habits[0]["startDay"] = day
+            object["habits"] = habits
+            XCTAssertThrowsError(try ArchiveFile.decode(JSONSerialization.data(withJSONObject: object)))
+        }
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let before = try XCTUnwrap(calendar.date(from: DateComponents(year: 2026, month: 2, day: 28)))
+        var invalid = archive
+        invalid.entries[0].day = HabitDay(before, calendar: calendar)
+        XCTAssertThrowsError(try ArchiveFile.encode(invalid))
+        XCTAssertThrowsError(try ArchiveFile.decode(JSONEncoder().encode(invalid)))
+        XCTAssertNil(invalid.entry(for: invalid.habits[0], on: before, calendar: calendar))
     }
 
     func testBackupRoundTripPreservesAllDataAndHistoricalGoals() throws {
@@ -78,7 +128,7 @@ final class ArchiveTransferTests: XCTestCase {
         var invalidDate = object
         invalidDate["entries"] = entries
         XCTAssertThrowsError(try ArchiveFile.decode(JSONSerialization.data(withJSONObject: invalidDate)))
-        for value in [-1, Double.nan, Double.infinity] {
+        for value in [Decimal(-1), .nan] {
             var invalid = valid
             invalid.entries[0].value = value
             XCTAssertThrowsError(try ArchiveFile.encode(invalid))

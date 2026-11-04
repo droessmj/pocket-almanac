@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Michael Droessler
 // SPDX-License-Identifier: PolyForm-Noncommercial-1.0.0
 
-// Renders the Sift app icon (1024×1024, opaque) into the asset catalog.
+// Renders the Blotter app icon (1024×1024, opaque) into the asset catalog.
 // Run from the repo root: swift scripts/make-icon.swift
 import CoreGraphics
 import Foundation
@@ -9,7 +9,7 @@ import ImageIO
 import UniformTypeIdentifiers
 
 let size = 1024
-let out = URL(fileURLWithPath: "apps/Sift/App/Assets.xcassets/AppIcon.appiconset/icon-1024.png")
+let out = URL(fileURLWithPath: "apps/Blotter/App/Assets.xcassets/AppIcon.appiconset/icon-1024.png")
 
 func rgb(_ hex: UInt32) -> CGColor {
     CGColor(srgbRed: CGFloat((hex >> 16) & 0xFF) / 255, green: CGFloat((hex >> 8) & 0xFF) / 255,
@@ -35,7 +35,7 @@ ctx.addLine(to: CGPoint(x: 230, y: 190))
 ctx.closePath()
 ctx.fillPath()
 
-// Incoming messages: three dots above the funnel, the outer two faded (sifted out).
+// Incoming messages: three dots above the funnel, the outer two faded (filtered out).
 for (x, alpha) in [(412.0, 0.35), (512.0, 1.0), (612.0, 0.35)] {
     ctx.setFillColor(rgb(0x4338CA).copy(alpha: alpha)!)
     ctx.fillEllipse(in: CGRect(x: x - 26, y: 712, width: 52, height: 52))
