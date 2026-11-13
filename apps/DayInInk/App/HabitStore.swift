@@ -102,14 +102,31 @@ final class HabitStore {
         }
     }
 
-    func save(_ habit: Habit) async throws {
+    func save(_ habit: Habit, clearingToday confirmedEntry: HabitEntry? = nil) async throws {
         guard habit.isValid else { throw ArchiveValidationError.invalidData }
         try await commit { archive in
+            let now = Date()
+            let calendar = Calendar.current
             if let index = archive.habits.firstIndex(where: { $0.id == habit.id }) {
+                let current = archive.habits[index]
+                if let recorded = archive.entry(for: current, on: now, calendar: calendar),
+                   recorded.kind != habit.kind {
+                    guard confirmedEntry == recorded else {
+                        throw TrackingChangeConfirmationRequired(entry: recorded)
+                    }
+                    archive.clear(current, on: now, calendar: calendar)
+                }
                 archive.habits[index] = habit
             } else {
                 archive.habits.append(habit)
             }
+        }
+    }
+
+    func moveHabit(_ habitID: UUID, to targetID: UUID) async throws {
+        guard habitID != targetID else { return }
+        try await commit { archive in
+            guard archive.moveHabit(habitID, to: targetID) else { throw HabitStoreError.missingHabit }
         }
     }
 
@@ -168,6 +185,11 @@ final class HabitStore {
             archive.entries.removeAll { $0.habitID == habit.id }
         }
     }
+}
+
+/// Consent applies only to this exact recorded result, not a log changed while the prompt was open.
+struct TrackingChangeConfirmationRequired: Error {
+    let entry: HabitEntry
 }
 
 private enum HabitStoreError: LocalizedError {

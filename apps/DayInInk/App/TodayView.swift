@@ -52,6 +52,7 @@ struct TodayView: View {
                 header
                 weekStrip
                 LazyVStack(alignment: .leading, spacing: 16) {
+                    let displayedHabits = visible
                     HStack(alignment: .top) {
                         VStack(alignment: .leading, spacing: 5) {
                             Text(isToday ? "Leave a mark today." : "A page in your progress.")
@@ -67,7 +68,7 @@ struct TodayView: View {
                     }
                     .padding(.top, 8).padding(.bottom, 4)
 
-                    if visible.isEmpty {
+                    if displayedHabits.isEmpty {
                         EmptyHabits(
                             title: emptyTitle,
                             message: emptyMessage,
@@ -75,8 +76,8 @@ struct TodayView: View {
                             action: addHabit
                         )
                     }
-                    ForEach(visible) { habit in
-                        HabitCard(habit: habit, date: selectedDate,
+                    ForEach(displayedHabits) { habit in
+                        HabitCard(habit: habit, date: selectedDate, reorderHabits: displayedHabits,
                                   edit: { logRequest = LogRequest(habit: habit, date: selectedDate) })
                     }
 
@@ -254,6 +255,7 @@ struct HabitCard: View {
     @State private var errorMessage: String?
     let habit: Habit
     let date: Date
+    let reorderHabits: [Habit]
     let edit: () -> Void
 
     private var entry: HabitEntry? { store.entry(habit, on: date) }
@@ -267,6 +269,7 @@ struct HabitCard: View {
                 ? AnyLayout(VStackLayout(alignment: .leading, spacing: 12))
                 : AnyLayout(HStackLayout(spacing: 12))
             layout {
+                HabitReorderHandle(habit: habit, habits: reorderHabits, move: moveHabit)
                 NavigationLink(value: habit) {
                     HStack(spacing: 12) {
                         HabitIcon(habit: habit)
@@ -288,6 +291,17 @@ struct HabitCard: View {
                     }
                     .contentShape(Rectangle())
                 }.buttonStyle(.plain).accessibilityIdentifier("habit-\(habit.name)")
+                .contextMenu {
+                    HabitMoveActions(habit: habit, habits: reorderHabits, move: moveHabit)
+                    Button("Edit this day", systemImage: "pencil", action: edit)
+                    if kind == .checkIn {
+                        Button("Mark passed", systemImage: "checkmark") { mutate { try await store.record(habit, on: date, checkIn: .passed) } }
+                        Button("Mark failed", systemImage: "xmark") { mutate { try await store.record(habit, on: date, checkIn: .failed) } }
+                    }
+                    if entry != nil {
+                        Button("Clear this day", systemImage: "arrow.uturn.backward") { mutate { try await store.clear(habit, on: date) } }
+                    }
+                }
 
                 VStack(alignment: .trailing, spacing: 6) {
                     if streak > 0 {
@@ -324,18 +338,13 @@ struct HabitCard: View {
             Rectangle().fill(habit.color.tint.opacity(0.65)).frame(width: 2)
                 .padding(.vertical, 14)
         }
-        .contextMenu {
-            Button("Edit this day", systemImage: "pencil", action: edit)
-            if kind == .checkIn {
-                Button("Mark passed", systemImage: "checkmark") { mutate { try await store.record(habit, on: date, checkIn: .passed) } }
-                Button("Mark failed", systemImage: "xmark") { mutate { try await store.record(habit, on: date, checkIn: .failed) } }
-            }
-            if entry != nil {
-                Button("Clear this day", systemImage: "arrow.uturn.backward") { mutate { try await store.clear(habit, on: date) } }
-            }
-        }
+        .habitDropDestination(habit, habits: store.archive.habits, move: moveHabit)
         .accessibilityAction(named: "Edit this day", edit)
         .mutationError($errorMessage)
+    }
+
+    private func moveHabit(_ habitID: UUID, _ targetID: UUID) {
+        mutate { try await store.moveHabit(habitID, to: targetID) }
     }
 
     private func mutate(_ operation: @escaping @MainActor () async throws -> Void) {
@@ -356,6 +365,71 @@ struct HabitCard: View {
             }
         } else {
             "\(amount(entry?.value ?? 0)) / \(amount(entry?.target ?? habit.target)) \(entry?.unit ?? habit.unit)"
+        }
+    }
+}
+
+struct HabitReorderHandle: View {
+    let habit: Habit
+    let habits: [Habit]
+    let move: (UUID, UUID) -> Void
+
+    var body: some View {
+        Image(systemName: "line.3.horizontal")
+            .font(.body)
+            .foregroundStyle(DayInInkTheme.secondary)
+            .frame(minWidth: 44, minHeight: 44)
+            .contentShape(Rectangle())
+            .draggable(habit.id.uuidString) {
+                Label(habit.name, systemImage: "line.3.horizontal")
+                    .padding(12).background(DayInInkTheme.paper, in: RoundedRectangle(cornerRadius: 8))
+            }
+            .accessibilityIdentifier("reorder-\(habit.name)")
+            .accessibilityLabel("Reorder \(habit.name)")
+            .accessibilityHint("Drag onto another habit, or use the Move up and Move down actions.")
+            .accessibilityActions {
+                HabitMoveActions(habit: habit, habits: habits, move: move)
+            }
+    }
+}
+
+struct HabitMoveActions: View {
+    let habit: Habit
+    let habits: [Habit]
+    let move: (UUID, UUID) -> Void
+
+    var body: some View {
+        if let index = habits.firstIndex(where: { $0.id == habit.id }) {
+            Button("Move up", systemImage: "arrow.up") {
+                if index > habits.startIndex { move(habit.id, habits[index - 1].id) }
+            }
+            .disabled(index == habits.startIndex)
+            .accessibilityIdentifier("move-up-\(habit.name)")
+            Button("Move down", systemImage: "arrow.down") {
+                if index < habits.endIndex - 1 { move(habit.id, habits[index + 1].id) }
+            }
+            .disabled(index == habits.endIndex - 1)
+            .accessibilityIdentifier("move-down-\(habit.name)")
+        }
+    }
+}
+
+extension View {
+    @ViewBuilder
+    func habitDropDestination(_ habit: Habit, habits: [Habit],
+                              move: @escaping (UUID, UUID) -> Void) -> some View {
+        if habit.isArchived {
+            self
+        } else {
+            self.contentShape(Rectangle()).dropDestination(for: String.self) { items, _ in
+                guard items.count == 1,
+                      let sourceID = UUID(uuidString: items[0]),
+                      sourceID != habit.id,
+                      habits.contains(where: { $0.id == sourceID && !$0.isArchived }),
+                      habits.contains(where: { $0.id == habit.id && !$0.isArchived }) else { return false }
+                move(sourceID, habit.id)
+                return true
+            }
         }
     }
 }

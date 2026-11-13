@@ -143,47 +143,136 @@ final class DayInInkUITests: XCTestCase {
         assertLabel(quick, equals: "Mark failed for Walk")
     }
 
-    func testSwitchingTrackingPreservesRecordedProgressUntilCleared() {
+    func testCancellingTrackingChangePreservesTodaysLogAndSettings() {
         app.buttons["quick-Walk"].tap()
-        switchWalkToPassFail()
+        chooseWalkTracking("Pass / fail")
+        app.navigationBars.buttons["Save"].tap()
+        let prompt = app.alerts["Change tracking for today?"]
+        XCTAssertTrue(prompt.waitForExistence(timeout: 5))
+        prompt.buttons["Cancel"].tap()
+        XCTAssertTrue(prompt.waitForNonExistence(timeout: 5))
+        app.navigationBars.buttons["Cancel"].tap()
+        app.buttons["tab-today"].tap()
+        assertDailyTotal(1000)
         app.terminate()
         app.launch()
         assertDailyTotal(1000)
+        openWalkEditor()
+        XCTAssertTrue(app.segmentedControls.buttons["Build progress"].isSelected)
+        app.navigationBars.buttons["Cancel"].tap()
+    }
+
+    func testConfirmedTrackingChangeUsesPassFailAndPersistsAfterRelaunch() {
+        app.buttons["quick-Walk"].tap()
+        chooseWalkTracking("Pass / fail")
+        confirmTrackingChange()
+        app.buttons["tab-today"].tap()
         app.buttons["habit-Walk"].tap()
         app.buttons["Check in for today"].tap()
-        let total = app.textFields["Daily total"]
-        XCTAssertTrue(total.waitForExistence(timeout: 5))
-        app.buttons["log-add-1"].tap()
-        saveAndWait()
-        app.buttons["Check in for today"].tap()
-        XCTAssertTrue(total.waitForExistence(timeout: 5))
-        XCTAssertEqual(Decimal(string: total.value as? String ?? ""), Decimal(1001))
-        let clear = app.buttons["Clear this day"]
-        if !clear.isHittable { app.swipeUp() }
-        clear.tap()
-        XCTAssertTrue(app.navigationBars.buttons["Save"].waitForNonExistence(timeout: 10))
-        app.buttons["Check in for today"].tap()
-        XCTAssertTrue(app.buttons["checkin-failed"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["checkin-passed"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["checkin-passed"].isSelected)
+        XCTAssertFalse(app.textFields["Daily total"].exists)
         app.buttons["checkin-failed"].tap()
         saveAndWait()
-        XCTAssertTrue(app.staticTexts["Failed"].waitForExistence(timeout: 5))
         app.terminate()
         app.launch()
-        XCTAssertTrue(app.buttons["quick-Walk"].waitForExistence(timeout: 10))
-        XCTAssertEqual(app.buttons["quick-Walk"].label, "Mark passed for Walk")
+        app.buttons["habit-Walk"].tap()
+        app.buttons["Check in for today"].tap()
+        XCTAssertTrue(app.buttons["checkin-failed"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["checkin-failed"].isSelected)
+        app.navigationBars.buttons["Cancel"].tap()
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        openWalkEditor()
+        XCTAssertTrue(app.segmentedControls.buttons["Pass / fail"].isSelected)
+        app.navigationBars.buttons["Cancel"].tap()
+    }
+
+    func testConfirmedTrackingChangeFromPassFailToProgressStartsUnrecorded() {
+        switchWalkToPassFail()
+        app.buttons["tab-today"].tap()
+        app.buttons["quick-Walk"].tap()
+        chooseWalkTracking("Build progress")
+        replace(app.textFields["Daily goal"], with: "30")
+        replace(app.textFields["Progress unit"], with: "min")
+        replace(app.textFields["Quick-add amount"], with: "10")
+        confirmTrackingChange()
+        app.buttons["tab-today"].tap()
+        assertDailyTotal(0)
+        app.buttons["quick-Walk"].tap()
+        app.terminate()
+        app.launch()
+        assertDailyTotal(10)
+    }
+
+    func testDraggingHabitsAndMoveControlsPersistOrderAcrossScreens() {
+        dragHabit("Drink Water", onto: "Walk")
+        assertHabit("Drink Water", isAbove: "Walk")
+        app.buttons["tab-habits"].tap()
+        assertHabit("Drink Water", isAbove: "Walk")
+        dragHabit("Workout", onto: "Drink Water")
+        assertHabit("Workout", isAbove: "Drink Water")
+        dragHabit("Workout", onto: "Walk")
+        assertHabit("Walk", isAbove: "Workout")
+        app.buttons["Options for Walk"].tap()
+        app.buttons["Move up"].tap()
+        assertHabit("Walk", isAbove: "Drink Water")
+        app.terminate()
+        app.launch()
+        assertHabit("Walk", isAbove: "Drink Water")
+        assertHabit("Drink Water", isAbove: "Workout")
+        capture("Prioritized Today")
+        app.buttons["tab-trends"].tap()
+        assertHabit("Walk", isAbove: "Drink Water")
+        capture("Prioritized Trends")
+    }
+
+    private func dragHabit(_ name: String, onto target: String) {
+        let handle = app.descendants(matching: .any).matching(identifier: "reorder-\(name)").firstMatch
+        let destination = app.staticTexts[target].firstMatch
+        XCTAssertTrue(handle.waitForExistence(timeout: 5))
+        XCTAssertTrue(destination.waitForExistence(timeout: 5))
+        XCTAssertTrue(handle.isHittable)
+        handle.press(forDuration: 1, thenDragTo: destination)
+    }
+
+    private func assertHabit(_ name: String, isAbove other: String) {
+        let upper = app.staticTexts[name].firstMatch
+        let lower = app.staticTexts[other].firstMatch
+        for _ in 0..<5 where !upper.exists || !lower.exists { app.swipeUp() }
+        let ordered = NSPredicate { _, _ in
+            upper.exists && lower.exists && upper.frame.minY < lower.frame.minY
+        }
+        let expectation = XCTNSPredicateExpectation(predicate: ordered, object: app)
+        XCTAssertEqual(XCTWaiter.wait(for: [expectation], timeout: 10), .completed, app.debugDescription)
+    }
+
+    private func confirmTrackingChange() {
+        app.navigationBars.buttons["Save"].tap()
+        let prompt = app.alerts["Change tracking for today?"]
+        XCTAssertTrue(prompt.waitForExistence(timeout: 5))
+        capture("Confirm tracking change")
+        prompt.buttons["confirm-tracking-change"].firstMatch.tap()
+        XCTAssertTrue(app.navigationBars.buttons["Save"].waitForNonExistence(timeout: 10))
     }
 
     private func switchWalkToPassFail() {
+        chooseWalkTracking("Pass / fail")
+        saveAndWait()
+    }
+
+    private func openWalkEditor() {
         app.buttons["tab-habits"].tap()
         app.buttons["Options for Walk"].tap()
         app.buttons["Edit habit"].tap()
-        let passFail = app.segmentedControls.buttons["Pass / fail"]
-        XCTAssertTrue(passFail.waitForExistence(timeout: 5))
-        if !passFail.isHittable { app.swipeUp() }
-        XCTAssertTrue(passFail.isEnabled)
-        passFail.tap()
-        saveAndWait()
-        XCTAssertTrue(app.staticTexts["Daily · pass / fail"].firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.segmentedControls.buttons["Pass / fail"].waitForExistence(timeout: 5))
+    }
+
+    private func chooseWalkTracking(_ title: String) {
+        openWalkEditor()
+        let option = app.segmentedControls.buttons[title]
+        if !option.isHittable { app.swipeUp() }
+        XCTAssertTrue(option.isEnabled)
+        option.tap()
     }
 
     func testBackupPickersCanBeCancelledWithoutChangingProgress() {
@@ -237,8 +326,16 @@ final class DayInInkUITests: XCTestCase {
         assertDailyTotal(3000)
         openDataTransfer()
         app.buttons["import-backup"].tap()
-        let backup = app.cells.matching(NSPredicate(format: "identifier BEGINSWITH %@", name)).firstMatch
-        XCTAssertTrue(backup.waitForExistence(timeout: 10), app.debugDescription)
+        let search = app.searchFields["Search"].firstMatch
+        XCTAssertTrue(search.waitForExistence(timeout: 10))
+        search.tap()
+        search.typeText(name + "\n")
+        let matches = app.cells.matching(NSPredicate(format: "identifier BEGINSWITH %@", name))
+        XCTAssertTrue(matches.firstMatch.waitForExistence(timeout: 10), app.debugDescription)
+        guard let backup = matches.allElementsBoundByIndex.last(where: { $0.isHittable }) else {
+            XCTFail("Exported backup is not reachable in Files search")
+            return
+        }
         XCTAssertTrue(backup.isEnabled)
         capture("Import picker")
         backup.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.25)).tap()
@@ -365,6 +462,8 @@ final class DayInInkUITests: XCTestCase {
     }
 
     private func replace(_ field: XCUIElement, with value: String) {
+        for _ in 0..<5 where !field.isHittable { app.swipeUp() }
+        XCTAssertTrue(field.isHittable)
         field.coordinate(withNormalizedOffset: CGVector(dx: 0.98, dy: 0.5)).tap()
         let previous = field.value as? String ?? ""
         field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: previous.count) + value)

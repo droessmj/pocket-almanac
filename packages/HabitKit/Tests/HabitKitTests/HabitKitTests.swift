@@ -17,6 +17,101 @@ final class HabitKitTests: XCTestCase {
               unit: "steps", createdAt: date(1), calendar: calendar)
     }
 
+    private func orderingHabit(_ index: Int, archived: Bool = false) -> Habit {
+        var value = habit()
+        value.id = UUID(uuidString: String(format: "00000000-0000-0000-0000-%012d", index))!
+        value.isArchived = archived
+        return value
+    }
+
+    func testMoveHabitDownUsesTargetsOriginalPositionAndKeepsArchivedOrder() {
+        let first = orderingHabit(1)
+        let archivedFirst = orderingHabit(2, archived: true)
+        let middle = orderingHabit(3)
+        let archivedLast = orderingHabit(4, archived: true)
+        let last = orderingHabit(5)
+        var archive = HabitArchive(habits: [first, archivedFirst, middle, archivedLast, last])
+
+        XCTAssertTrue(archive.moveHabit(first.id, to: last.id))
+        XCTAssertEqual(archive.habits, [archivedFirst, middle, archivedLast, last, first])
+        XCTAssertEqual(archive.habits.filter(\.isArchived), [archivedFirst, archivedLast])
+        XCTAssertEqual(archive.habits.filter { !$0.isArchived }, [middle, last, first])
+        XCTAssertTrue(archive.moveHabit(middle.id, to: last.id))
+        XCTAssertEqual(archive.habits, [archivedFirst, archivedLast, last, middle, first])
+    }
+
+    func testMoveHabitUpUsesTargetsOriginalPositionAndKeepsArchivedOrder() {
+        let first = orderingHabit(1)
+        let archivedFirst = orderingHabit(2, archived: true)
+        let middle = orderingHabit(3)
+        let archivedLast = orderingHabit(4, archived: true)
+        let last = orderingHabit(5)
+        var archive = HabitArchive(habits: [first, archivedFirst, middle, archivedLast, last])
+
+        XCTAssertTrue(archive.moveHabit(last.id, to: first.id))
+        XCTAssertEqual(archive.habits, [last, first, archivedFirst, middle, archivedLast])
+        XCTAssertEqual(archive.habits.filter(\.isArchived), [archivedFirst, archivedLast])
+        XCTAssertEqual(archive.habits.filter { !$0.isArchived }, [last, first, middle])
+        XCTAssertTrue(archive.moveHabit(first.id, to: last.id))
+        XCTAssertEqual(archive.habits, [first, last, archivedFirst, middle, archivedLast])
+    }
+
+    func testMoveHabitRejectsMissingAndArchivedIdentitiesWithoutMutation() {
+        let first = orderingHabit(1)
+        let second = orderingHabit(2)
+        let archived = orderingHabit(3, archived: true)
+        let missing = orderingHabit(4)
+        var archive = HabitArchive(habits: [first, archived, second])
+        XCTAssertTrue(archive.record(first, on: date(2), value: 40, calendar: calendar, now: date(6)))
+        let original = archive
+
+        for (source, target) in [
+            (missing.id, first.id), (first.id, missing.id), (missing.id, missing.id),
+            (archived.id, first.id), (first.id, archived.id), (archived.id, archived.id)
+        ] {
+            XCTAssertFalse(archive.moveHabit(source, to: target))
+            XCTAssertEqual(archive, original)
+        }
+        XCTAssertTrue(archive.moveHabit(first.id, to: first.id))
+        XCTAssertEqual(archive, original)
+        var empty = HabitArchive()
+        XCTAssertFalse(empty.moveHabit(missing.id, to: missing.id))
+        XCTAssertEqual(empty, HabitArchive())
+    }
+
+    func testMovedOrderRoundTripsWithoutChangingSettingsOrRecordedHistory() throws {
+        let first = orderingHabit(1)
+        let second = orderingHabit(2)
+        let third = orderingHabit(3)
+        var archive = HabitArchive(habits: [first, second, third])
+        for (index, habit) in archive.habits.enumerated() {
+            XCTAssertTrue(archive.record(habit, on: date(2), value: Decimal((index + 1) * 20),
+                                         calendar: calendar, now: date(6)))
+        }
+        archive.habits[0].target = 200
+        archive.habits[0].unit = "meters"
+        archive.habits[1].isArchived = true
+        let original = archive
+
+        XCTAssertTrue(archive.moveHabit(third.id, to: first.id))
+        XCTAssertEqual(archive.habits, [original.habits[2], original.habits[0], original.habits[1]])
+        XCTAssertEqual(archive.entries, original.entries)
+        let decoded = try ArchiveFile.decode(ArchiveFile.encode(archive))
+        XCTAssertEqual(decoded.version, 3)
+        XCTAssertEqual(decoded, archive)
+        XCTAssertEqual(decoded.habits.map(\.id), [third.id, first.id, second.id])
+        XCTAssertEqual(decoded.entries, original.entries)
+        for habit in original.habits {
+            XCTAssertEqual(archive.entry(for: habit, on: date(2), calendar: calendar),
+                           original.entry(for: habit, on: date(2), calendar: calendar))
+            XCTAssertEqual(decoded.entry(for: habit, on: date(2), calendar: calendar),
+                           original.entry(for: habit, on: date(2), calendar: calendar))
+        }
+        let recorded = try XCTUnwrap(decoded.entry(for: first, on: date(2), calendar: calendar))
+        XCTAssertEqual(recorded.target, 100)
+        XCTAssertEqual(recorded.unit, "steps")
+    }
+
     func testStarterHabitsHaveOnlyTheRequestedNamesGoalsAndTracking() throws {
         let archive = HabitArchive.starterHabits(now: date(1))
         XCTAssertEqual(archive.habits.count, 3)

@@ -15,6 +15,12 @@ struct HabitEditor: View {
     @State private var unit: String
     @State private var errorMessage: String?
     @State private var saving = false
+    @State private var pendingTrackingChange: PendingTrackingChange?
+
+    private struct PendingTrackingChange {
+        let habit: Habit
+        let entry: HabitEntry
+    }
 
     private let emojis = ["🚶", "🔥", "💡", "🍞", "📖", "💧", "🧘", "🏃", "🌱", "💤", "🎨", "💪"]
 
@@ -129,7 +135,7 @@ struct HabitEditor: View {
                         Text("Enter numbers using your region’s decimal separator, without grouping separators. Values must fit exact decimal precision.")
                     }
                     if original != nil {
-                        Text("Tracking changes apply to unrecorded days. Recorded days keep their original tracking type, goal, and unit. Clear a recorded day to use the new type.")
+                        Text("Tracking changes apply to today and unrecorded days. If today has a different recorded tracking type, saving asks before clearing that log. Earlier recorded days keep their original tracking type, goal, and unit.")
                         if kind == .checkIn {
                             Text("Changing the daily default updates unrecorded days, including past days. Explicit passes and failures stay as you logged them.")
                         }
@@ -150,6 +156,18 @@ struct HabitEditor: View {
             .disabled(saving)
             .interactiveDismissDisabled(saving)
             .mutationError($errorMessage)
+            .alert("Change tracking for today?", isPresented: Binding(
+                get: { pendingTrackingChange != nil },
+                set: { if !$0 { pendingTrackingChange = nil } }
+            ), presenting: pendingTrackingChange) { change in
+                Button("Clear today's log and save", role: .destructive) {
+                    persist(change.habit, clearingToday: change.entry)
+                }
+                .accessibilityIdentifier("confirm-tracking-change")
+                Button("Cancel", role: .cancel) { pendingTrackingChange = nil }
+            } message: { change in
+                Text("Today's recorded result (\(change.entry.kind == .progress ? "\(amount(change.entry.value)) \(change.entry.unit)" : (change.entry.checkIn == .passed ? "Passed" : "Failed"))) will be cleared so you can use the new tracking type. Earlier history will stay unchanged.")
+            }
         }
     }
 
@@ -160,12 +178,20 @@ struct HabitEditor: View {
                           step: stepValue ?? 1, unit: unit.trimmingCharacters(in: .whitespacesAndNewlines),
                           createdAt: original?.createdAt ?? Date(), isArchived: original?.isArchived ?? false,
                           defaultPassed: defaultPassed, startDay: original?.startDay)
+        persist(habit)
+    }
+
+    private func persist(_ habit: Habit, clearingToday confirmedEntry: HabitEntry? = nil) {
+        guard !saving else { return }
+        pendingTrackingChange = nil
         saving = true
         Task {
             defer { saving = false }
             do {
-                try await store.save(habit)
+                try await store.save(habit, clearingToday: confirmedEntry)
                 dismiss()
+            } catch let confirmation as TrackingChangeConfirmationRequired {
+                pendingTrackingChange = PendingTrackingChange(habit: habit, entry: confirmation.entry)
             } catch { errorMessage = error.localizedDescription }
         }
     }

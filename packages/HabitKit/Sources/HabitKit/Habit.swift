@@ -248,6 +248,18 @@ public struct HabitArchive: Codable, Equatable, Sendable {
         rebuildEntryIndices()
     }
 
+    /// Move an active habit into the target's original position without changing history.
+    @discardableResult
+    public mutating func moveHabit(_ habitID: UUID, to targetID: UUID) -> Bool {
+        guard let sourceIndex = habits.firstIndex(where: { $0.id == habitID }),
+              let targetIndex = habits.firstIndex(where: { $0.id == targetID }),
+              !habits[sourceIndex].isArchived, !habits[targetIndex].isArchived else { return false }
+        guard sourceIndex != targetIndex else { return true }
+        let habit = habits.remove(at: sourceIndex)
+        habits.insert(habit, at: targetIndex)
+        return true
+    }
+
     private func entryIndex(for habitID: UUID, day: HabitDay) -> Int? {
         guard let ordinal = day.ordinal else { return nil }
         return entryIndices[habitID]?[ordinal]
