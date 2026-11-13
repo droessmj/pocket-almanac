@@ -6,7 +6,7 @@ Check a task only after verifying its result. Local builds do not establish memb
 
 ## Current release contract
 
-- No previous app state is deployed. Only current state is supported; no calendar conversion, old App Group continuity, Keychain deletion, or other migration runs.
+- Only current version 3 app state is supported; no calendar conversion, old App Group continuity, Keychain deletion, or other in-app migration runs. The older `com.droessmj.daymark` development app has a separate sandbox and exports version 2 backups, which cannot be imported directly into the current app.
 - Day in Ink uses version 3 backups, decimal numeric values, and persisted Gregorian civil start/day keys. Unsupported or invalid files are rejected without replacing existing data. Writes run off the main actor in submission order; memory changes only after persistence succeeds.
 - Blotter uses `com.droessmj.blotter`, embedded `com.droessmj.blotter.filter`, and App Group `group.com.droessmj.blotter`. Neither target requires shared Keychain access. No message/match history is recorded.
 - Google Analytics remains on the website home page only. The four support/privacy pages do not initialize analytics or set analytics cookies. Previously created parent-domain cookies may remain in a browser.
@@ -14,7 +14,7 @@ Check a task only after verifying its result. Local builds do not establish memb
 
 ## 1. Developer account and signing
 
-Apple registration was reported complete November 3, 2026; the latest recorded account status was **Enrollment Pending**. Active membership and App Store Connect capabilities remain unverified.
+Apple Developer Program membership was reported **Active** on November 4, 2026. Team `VGRQY536X3` successfully development-signed Day in Ink for a physical iPhone and distribution-signed its version `1.0.0`, build `4` IPA with the explicit `com.droessmj.dayinink` profile. Xcode successfully uploaded that build to App Store Connect; the user subsequently reported installing it through TestFlight. Browser automation is not authenticated; remaining account and regional compliance checks still require review.
 
 - [ ] Confirm active paid Apple Developer Program membership, App Store Connect access, current agreements, and appropriate roles.
 - [ ] Confirm the intended team in `Config/Team.xcconfig` and create/authorize distribution signing assets.
@@ -106,3 +106,5 @@ Copy-ready values are in `APP_STORE_CONNECT.json`; they are not proof that live 
 - On an optimized host smoke fixture of 100 habits and 36,500 entries (10.84 MB), generating 90-day samples for all habits took approximately 0.031 seconds with indexed lookups versus 0.748 seconds before indexing. These are host measurements, not iPhone performance results.
 - Fresh unsigned Release archives for both apps succeeded at version `1.0.0`, build `4`, with the expected iPhone-only device family, deployment targets, icons, privacy manifests, embedded Blotter filter, and dSYMs. Day in Ink was re-archived after the final numeric and accessibility changes. App Store distribution validation and upload were not performed.
 - Website readiness checks passed all five pages. A real browser observed no scripts, analytics requests, fresh analytics cookies, or horizontal overflow on the four support/privacy pages; home-page analytics remained active. Existing home/parent-domain cookies remain as disclosed. Generated files are updated locally; the website has not been published.
+- November 4, 2026 Day in Ink TestFlight milestone: the user created the explicit `com.droessmj.dayinink` identifier and app record, then Xcode distribution export and upload succeeded for version `1.0.0`, build `4`. Signature verification confirmed Apple Distribution signing, an exact application identifier, `get-task-allow = false`, and TestFlight reporting enabled; app and dSYM UUIDs matched. The upload service acknowledged processing, and the user later reported a TestFlight installation. No App Review submission or public release was performed.
+- November 13, 2026 starter-habit update: fresh archives now contain only Walk (10,000 steps), Drink Water (8 glasses), and Workout (pass/fail). All 43 HabitKit tests and all 14 Day in Ink UI scenarios passed, including backup restore, per-habit defaults, tracking-mode history preservation, localized exact values, relaunch persistence, and maximum Dynamic Type navigation. Today and Workout detail screenshots were inspected. Existing archives are not reseeded. Repository build number is now `5`; it has not been uploaded. Tracking-history behavior changes and one-off legacy backup conversion remain pending user decisions; no phone data was changed.

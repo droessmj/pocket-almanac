@@ -13,7 +13,9 @@ A native iPhone habit tracker with emoji cards, pastel progress rails, a weekly 
 
 Run `xcodegen generate` from the repository root and select the **DayInInk** scheme in `Blotter.xcodeproj`.
 
-Data is stored atomically in `Application Support/DayInInk/habits.json` inside the app’s sandbox. No server, account, or third-party dependencies are needed. A missing file starts with six editable habits; an unreadable file is preserved and reported instead of replaced. Loading and serialized writes run off the main thread. Changes appear only after saving succeeds; failures are reported on the active screen or sheet without discarding entered values.
+Data is stored atomically in `Application Support/DayInInk/habits.json` inside the app’s sandbox. No server, account, or third-party dependencies are needed. A missing file starts with only **Walk** (10,000 steps), **Drink Water** (8 glasses), and **Workout** (pass/fail); existing archives are never replaced or reseeded when the starter set changes. An unreadable file is preserved and reported instead of replaced. Loading and serialized writes run off the main thread. Changes appear only after saving succeeds; failures are reported on the active screen or sheet without discarding entered values.
+
+The older development app `com.droessmj.daymark` and the current app `com.droessmj.dayinink` are separate installations with separate sandboxes, even though both display “Day in Ink.” Installing the current TestFlight app does not copy the older app’s records. Deleting an installation removes its local database; export a backup before deleting it. An ordinary in-place update of the same app identity should retain local data.
 
 Open **Habits → About (ⓘ) → Export and import** to save a JSON backup using Files or import one. Export waits for prior writes and captures all habit settings, archived habits, IDs, creation dates, stable start days, explicit check-ins, and exact decimal progress with historical goals/units. Implicit default days remain calculated rather than being written as fabricated records. The format is versioned and matches the on-device archive.
 

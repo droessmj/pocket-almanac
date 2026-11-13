@@ -27,7 +27,7 @@ final class DayInInkUITests: XCTestCase {
     }
 
     func testExplicitFailCanBeChangedToPassAndCleared() {
-        app.buttons["habit-Mind clearing"].tap()
+        app.buttons["habit-Workout"].tap()
         XCTAssertTrue(app.buttons["Check in for today"].waitForExistence(timeout: 5))
         app.buttons["Check in for today"].tap()
         app.buttons["checkin-failed"].tap()
@@ -44,16 +44,16 @@ final class DayInInkUITests: XCTestCase {
     }
 
     func testDefaultPassCanBeFailedAndRestoredFromToday() {
-        let quick = app.buttons["quick-Mind clearing"]
-        XCTAssertEqual(quick.label, "Mark failed for Mind clearing")
+        let quick = app.buttons["quick-Workout"]
+        XCTAssertEqual(quick.label, "Mark failed for Workout")
         quick.tap()
-        assertLabel(quick, equals: "Mark passed for Mind clearing")
+        assertLabel(quick, equals: "Mark passed for Workout")
         app.terminate()
         app.launch()
         XCTAssertTrue(quick.waitForExistence(timeout: 10))
-        XCTAssertEqual(quick.label, "Mark passed for Mind clearing")
+        XCTAssertEqual(quick.label, "Mark passed for Workout")
         quick.tap()
-        assertLabel(quick, equals: "Mark failed for Mind clearing")
+        assertLabel(quick, equals: "Mark failed for Workout")
     }
 
     func testCreatesCustomHabit() {
@@ -72,8 +72,14 @@ final class DayInInkUITests: XCTestCase {
     }
 
     func testFailedDefaultPersistsAndClearRestoresIt() {
+        app.buttons["add-habit"].tap()
+        let name = app.textFields["Habit name"]
+        XCTAssertTrue(name.waitForExistence(timeout: 5))
+        name.tap()
+        name.typeText("Stretch")
+        saveAndWait("Create")
         app.buttons["tab-habits"].tap()
-        app.buttons["Options for Mind clearing"].tap()
+        app.buttons["Options for Workout"].tap()
         app.buttons["Edit habit"].tap()
         let failed = app.segmentedControls["default-result"].buttons["Failed"]
         XCTAssertTrue(failed.waitForExistence(timeout: 5))
@@ -81,16 +87,16 @@ final class DayInInkUITests: XCTestCase {
         failed.tap()
         saveAndWait()
         app.buttons["tab-today"].tap()
-        let quick = app.buttons["quick-Mind clearing"]
-        XCTAssertEqual(quick.label, "Mark passed for Mind clearing")
-        XCTAssertEqual(app.buttons["quick-No snack after dinner"].label, "Mark failed for No snack after dinner")
+        let quick = app.buttons["quick-Workout"]
+        XCTAssertEqual(quick.label, "Mark passed for Workout")
+        XCTAssertEqual(app.buttons["quick-Stretch"].label, "Mark failed for Stretch")
         app.terminate()
         app.launch()
         XCTAssertTrue(quick.waitForExistence(timeout: 10))
-        XCTAssertEqual(quick.label, "Mark passed for Mind clearing")
+        XCTAssertEqual(quick.label, "Mark passed for Workout")
         quick.tap()
-        assertLabel(quick, equals: "Mark failed for Mind clearing")
-        app.buttons["habit-Mind clearing"].tap()
+        assertLabel(quick, equals: "Mark failed for Workout")
+        app.buttons["habit-Workout"].tap()
         app.buttons["Check in for today"].tap()
         clearAndWait()
         XCTAssertTrue(app.staticTexts["Failed"].waitForExistence(timeout: 5))

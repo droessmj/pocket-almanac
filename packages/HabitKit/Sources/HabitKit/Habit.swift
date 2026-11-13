@@ -364,11 +364,8 @@ public struct HabitArchive: Codable, Equatable, Sendable {
     public static func starterHabits(now: Date = Date()) -> Self {
         Self(habits: [
             Habit(name: "Walk", emoji: "🚶", color: .blue, kind: .progress, target: 10000, step: 1000, unit: "steps", createdAt: now),
-            Habit(name: "Good workout", emoji: "🔥", color: .coral, kind: .progress, target: 30, step: 10, unit: "min", createdAt: now),
-            Habit(name: "Mind clearing", emoji: "💡", color: .lavender, kind: .checkIn, createdAt: now),
-            Habit(name: "No snack after dinner", emoji: "🍞", color: .amber, kind: .checkIn, createdAt: now),
-            Habit(name: "Read a little", emoji: "📖", color: .rose, kind: .progress, target: 20, step: 5, unit: "pages", createdAt: now),
-            Habit(name: "Drink water", emoji: "💧", color: .mint, kind: .progress, target: 8, step: 1, unit: "glasses", createdAt: now)
+            Habit(name: "Drink Water", emoji: "💧", color: .mint, kind: .progress, target: 8, step: 1, unit: "glasses", createdAt: now),
+            Habit(name: "Workout", emoji: "🔥", color: .coral, kind: .checkIn, createdAt: now)
         ])
     }
 }

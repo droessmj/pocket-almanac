@@ -17,6 +17,22 @@ final class HabitKitTests: XCTestCase {
               unit: "steps", createdAt: date(1), calendar: calendar)
     }
 
+    func testStarterHabitsHaveOnlyTheRequestedNamesGoalsAndTracking() throws {
+        let archive = HabitArchive.starterHabits(now: date(1))
+        XCTAssertEqual(archive.habits.count, 3)
+        XCTAssertEqual(Set(archive.habits.map(\.name)), ["Walk", "Drink Water", "Workout"])
+        let walk = try XCTUnwrap(archive.habits.first { $0.name == "Walk" })
+        XCTAssertEqual(walk.kind, .progress)
+        XCTAssertEqual(walk.target, 10_000)
+        XCTAssertEqual(walk.unit, "steps")
+        let water = try XCTUnwrap(archive.habits.first { $0.name == "Drink Water" })
+        XCTAssertEqual(water.kind, .progress)
+        XCTAssertEqual(water.target, 8)
+        XCTAssertEqual(water.unit, "glasses")
+        let workout = try XCTUnwrap(archive.habits.first { $0.name == "Workout" })
+        XCTAssertEqual(workout.kind, .checkIn)
+    }
+
     func testQuickAddArithmeticRejectsPrecisionLossAndOverflow() throws {
         let tiny = try XCTUnwrap(Decimal(string: "1e-120"))
         let huge = try XCTUnwrap(Decimal(string: "1e120"))
