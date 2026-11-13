@@ -65,6 +65,14 @@ Review the release checklist for outstanding publication checks. See [SECURITY.m
 2. `xcodegen generate`
 3. Choose the app’s scheme and a physical-device destination. In Xcode: Product → Archive → Distribute App → App Store Connect.
 
+### App Store media
+
+Capture and rendering tools live in `scripts/store-assets/`. They use isolated capture-only XCTest projects and dedicated simulators; synthetic fixtures never enter the shipping app bundle. Python image processing requires Pillow; video processing uses FFmpeg/FFprobe. The capture scripts and per-app manifests record the device IDs, source footage, fixture data, and commands.
+
+Generated media lives under `build/store-assets/{day-in-ink,blotter}/`: `creative/header.png`, `creative/search-results.png`, ordered `screenshots/iphone/`, and `previews/`. After capture and encoding, run `python3 scripts/store-assets/package.py --duo-status deferred` to verify image dimensions/opacity and video format/duration, then rebuild the local `build/store-assets/index.html` gallery and `app-store-upload-assets.zip`. The ZIP contains only submission media, not raw recordings, simulator data, or test results.
+
+The current asset set is English (U.S.) for iPhone. iPad assets are omitted because the apps remain iPhone-only. Duo captures are deferred until a compatible simulator runtime can be installed; no resized iPhone substitutes are provided. Generated assets still require visual review in App Store Connect and Apple approval.
+
 ## Support development
 
 If these apps are useful to you, you can [leave a one-time tip on Ko-fi](https://ko-fi.com/droessmj). No subscription required.

@@ -1,0 +1,31 @@
+name: DayInInkCapture
+options:
+  bundleIdPrefix: com.droessmj.storeassets
+  deploymentTarget:
+    iOS: '18.0'
+settings:
+  base:
+    SWIFT_VERSION: '6.0'
+    CODE_SIGNING_ALLOWED: NO
+    GENERATE_INFOPLIST_FILE: YES
+    TARGETED_DEVICE_FAMILY: '1,2'
+    INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsLocalNetworking: YES
+    INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsArbitraryLoads: YES
+targets:
+  DayInInkCapture:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - DayInInkCapture.swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.droessmj.storeassets.dayinink.capture
+schemes:
+  DayInInkCapture:
+    build:
+      targets:
+        DayInInkCapture: all
+    test:
+      targets:
+        - DayInInkCapture
+      gatherCoverageData: false

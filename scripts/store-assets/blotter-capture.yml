@@ -1,0 +1,27 @@
+name: BlotterStoreCapture
+options:
+  deploymentTarget:
+    iOS: '17.0'
+settings:
+  base:
+    CODE_SIGNING_ALLOWED: NO
+    SWIFT_VERSION: '5.0'
+targets:
+  BlotterStoreCapture:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: blotter-capture.swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.droessmj.storecapture.blotter
+        GENERATE_INFOPLIST_FILE: YES
+        TARGETED_DEVICE_FAMILY: '1,2'
+schemes:
+  BlotterStoreCapture:
+    build:
+      targets:
+        BlotterStoreCapture: all
+    test:
+      targets:
+        - BlotterStoreCapture
