@@ -205,9 +205,10 @@ final class DayInInkUITests: XCTestCase {
     }
 
     func testDraggingHabitsAndMoveControlsPersistOrderAcrossScreens() {
-        dragHabit("Drink Water", onto: "Walk")
-        assertHabit("Drink Water", isAbove: "Walk")
+        XCTAssertFalse(app.descendants(matching: .any).matching(identifier: "reorder-Walk").firstMatch.exists)
         app.buttons["tab-habits"].tap()
+        capture("Habits before reordering")
+        dragHabit("Drink Water", onto: "Walk")
         assertHabit("Drink Water", isAbove: "Walk")
         dragHabit("Workout", onto: "Drink Water")
         assertHabit("Workout", isAbove: "Drink Water")
@@ -216,10 +217,12 @@ final class DayInInkUITests: XCTestCase {
         app.buttons["Options for Walk"].tap()
         app.buttons["Move up"].tap()
         assertHabit("Walk", isAbove: "Drink Water")
+        capture("Reordered Habits")
         app.terminate()
         app.launch()
         assertHabit("Walk", isAbove: "Drink Water")
         assertHabit("Drink Water", isAbove: "Workout")
+        XCTAssertFalse(app.descendants(matching: .any).matching(identifier: "reorder-Walk").firstMatch.exists)
         capture("Prioritized Today")
         app.buttons["tab-trends"].tap()
         assertHabit("Walk", isAbove: "Drink Water")
@@ -232,7 +235,10 @@ final class DayInInkUITests: XCTestCase {
         XCTAssertTrue(handle.waitForExistence(timeout: 5))
         XCTAssertTrue(destination.waitForExistence(timeout: 5))
         XCTAssertTrue(handle.isHittable)
-        handle.press(forDuration: 1, thenDragTo: destination)
+        handle.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
+            .press(forDuration: 1,
+                   thenDragTo: destination.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)),
+                   withVelocity: .slow, thenHoldForDuration: 1)
     }
 
     private func assertHabit(_ name: String, isAbove other: String) {
